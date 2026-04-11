@@ -1,4 +1,4 @@
-#Overview:
+## Overview:
 
 Financial distress and bankruptcy prediction are critical for investors, banks, and businesses to minimize risk.
 
@@ -20,13 +20,14 @@ Automate bankruptcy prediction
 Provide data-driven insights
 Improve decision-making for financial stakeholders
 
-Key Features
+## Key Features
 Multiple ML model implementation and comparison
 Feature importance analysis
 Data preprocessing (handling missing values, normalization)
 Model evaluation using metrics like accuracy, precision, recall, F1-score
 Confusion matrix visualization
-🛠️ Tech Stack
+
+## Tech Stack
 Language: Python
 Libraries: Scikit-learn, XGBoost, Pandas, NumPy, Matplotlib, Seaborn
 Tools: Jupyter Notebook / VS Code
@@ -38,7 +39,7 @@ Liquidity ratios
 Debt ratios
 (Mention dataset source here – Kaggle/UCI/etc.)
 
-Installation & Setup
+## Installation & Setup
 git clone https://github.com/your-username/bankruptcy-prediction.git
 cd bankruptcy-prediction
 pip install -r requirements.txt
@@ -47,7 +48,7 @@ Run the notebook or script:
 
 python main.py
 
-Model Implementation
+## Model Implementation
 1. Logistic Regression
 Baseline model for binary classification
 Easy to interpret
