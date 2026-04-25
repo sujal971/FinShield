@@ -162,6 +162,20 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import time
 from datetime import datetime, timedelta
+import requests
+from streamlit_lottie import st_lottie
+
+# ---------------------- Helper Functions ----------------------
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+# Lottie Assets
+lottie_financial = load_lottieurl("https://lottie.host/85a2d61b-9e42-4f0e-b016-8656f4d3261a/8pQZkYJmIq.json")
+lottie_risk = load_lottieurl("https://lottie.host/385800f4-52d9-4b68-98f5-19e9f67a213e/p4bXlH2v9o.json")
+lottie_success = load_lottieurl("https://lottie.host/642f8832-72cc-4995-b9f1-9457f59d482c/E2W8vUuUaR.json")
 
 # ---------------------- Load & Preprocess Data ----------------------
 @st.cache_data
@@ -316,19 +330,21 @@ def plot_model_comparison(model_scores):
     return fig
 
 # ---------------------- Scenario Analysis ----------------------
-def scenario_analysis(model, base_features):
-    scenarios = {
-        'Best Case': [max(0, f - 0.2) if i != 2 else min(1, f + 0.2) for i, f in enumerate(base_features)],
-        'Worst Case': [min(1, f + 0.2) if i != 2 else max(0, f - 0.2) for i, f in enumerate(base_features)],
-        'Current': base_features
-    }
+def sensitivity_analysis(model, features, feat1_idx, feat2_idx):
+    """Generate data for sensitivity heatmap"""
+    x_range = np.linspace(0, 1, 11)
+    y_range = np.linspace(0, 1, 11)
+    z = np.zeros((11, 11))
     
-    results = {}
-    for scenario, features in scenarios.items():
-        pred, prob = predict_bankruptcy(model, features)
-        results[scenario] = {'prediction': pred, 'probability': prob[1]}
-    
-    return results
+    for i, x in enumerate(x_range):
+        for j, y in enumerate(y_range):
+            temp_features = list(features)
+            temp_features[feat1_idx] = x
+            temp_features[feat2_idx] = y
+            _, prob = predict_bankruptcy(model, temp_features)
+            z[j, i] = prob[1]
+            
+    return x_range, y_range, z
 
 # ---------------------- Main App ----------------------
 def main():
@@ -341,54 +357,85 @@ def main():
     # Enhanced CSS
     st.markdown("""
         <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+            
+            * { font-family: 'Inter', sans-serif; }
+            
             .main-header {
-                background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-                padding: 2rem;
-                border-radius: 10px;
-                margin-bottom: 2rem;
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                padding: 3rem;
+                border-radius: 20px;
+                margin-bottom: 2.5rem;
                 text-align: center;
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
                 color: white;
             }
+            
+            .stApp {
+                background: #f0f2f6;
+            }
+            
             .prediction-card {
                 padding: 30px; 
-                border-radius: 15px; 
+                border-radius: 20px; 
                 text-align: center; 
-                font-size: 24px;
-                font-weight: bold; 
-                color: white;
-                margin: 20px 0;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                transition: all 0.3s ease;
+                box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+                border: 1px solid rgba(255,255,255,0.2);
             }
+            
+            .prediction-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+            }
+            
             .success {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
             }
+            
             .danger {
-                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+                animation: pulse 2s infinite;
             }
-            .metric-card {
-                background: white;
+            
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.02); }
+                100% { transform: scale(1); }
+            }
+            
+            .glass-card {
+                background: rgba(255, 255, 255, 0.8);
                 padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                margin: 10px 0;
+                border-radius: 15px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+                margin-bottom: 20px;
             }
-            .risk-item {
-                padding: 10px;
-                margin: 5px 0;
-                border-radius: 5px;
-                background: #f8f9fa;
-                border-left: 4px solid #dc3545;
+            
+            .metric-label {
+                font-size: 0.9rem;
+                color: #666;
+                font-weight: 600;
             }
         </style>
     """, unsafe_allow_html=True)
 
-    # Header
-    st.markdown("""
-        <div class="main-header">
-            <h1>🤖 AI Bankruptcy Predictor </h1>
-            <p>Advanced ML-powered financial risk assessment with real-time analytics</p>
-        </div>
-    """, unsafe_allow_html=True)
+    # Header with Lottie
+    col1, col2, col3 = st.columns([1, 4, 1])
+    with col2:
+        st.markdown("""
+            <div class="main-header">
+                <h1 style="font-size: 3rem; margin-bottom: 0;">🛡️ FinShield AI</h1>
+                <p style="font-size: 1.2rem; opacity: 0.9;">Professional Bankruptcy Prediction & Risk Analysis Engine</p>
+            </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        if lottie_financial:
+            st_lottie(lottie_financial, height=150, key="header_lottie")
 
     # Sidebar with Enhanced Controls
     st.sidebar.markdown("## 🎛️ Control Panel")
@@ -579,6 +626,12 @@ def main():
             st.subheader("🎯 Risk Profile")
             radar_fig = create_radar_chart(features)
             st.plotly_chart(radar_fig, use_container_width=True, height=300)
+            
+            # Interactive Balloons/Confetti
+            if prediction == 0 and probability[1] < 0.2:
+                if st.button("Celebrate Stability! ✨"):
+                    st.balloons()
+                    st.toast("Company is in excellent health!", icon="🌟")
 
     with tab2:
         st.subheader("📊 Advanced Analytics Dashboard")
@@ -608,19 +661,36 @@ def main():
             st.plotly_chart(fig, use_container_width=True)
         
         # Distribution analysis
-        st.subheader("📊 Data Distribution")
-        feature_to_analyze = st.selectbox("Select feature to analyze:", features_names)
-        feature_idx = features_names.index(feature_to_analyze)
-        feature_col = data.columns[feature_idx]
+        st.subheader("📊 Sensitivity Analysis Heatmap")
+        st.write("Understand how changing two variables simultaneously affects the bankruptcy risk.")
         
-        fig = px.histogram(
-            data, 
-            x=feature_col, 
-            color='class', 
-            title=f"Distribution of {feature_to_analyze}",
-            marginal="box"
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            feat1 = st.selectbox("Variable 1:", features_names, index=2)
+        with col_s2:
+            feat2 = st.selectbox("Variable 2:", features_names, index=1)
+            
+        f1_idx = features_names.index(feat1)
+        f2_idx = features_names.index(feat2)
+        
+        x_rng, y_rng, z_data = sensitivity_analysis(selected_model, features, f1_idx, f2_idx)
+        
+        fig_heat = go.Figure(data=go.Heatmap(
+            z=z_data,
+            x=[f"{x:.1f}" for x in x_rng],
+            y=[f"{y:.1f}" for y in y_rng],
+            colorscale='RdYlGn_r',
+            hovertemplate=f"{feat1}: %{{x}}<br>{feat2}: %{{y}}<br>Risk: %{{z:.1%}}<extra></extra>"
+        ))
+        
+        fig_heat.update_layout(
+            title=f"Risk Interaction: {feat1} vs {feat2}",
+            xaxis_title=feat1,
+            yaxis_title=feat2
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig_heat, use_container_width=True)
+
+        st.subheader("📊 Data Distribution")
 
     with tab3:
         st.subheader("🎯 Scenario Analysis")

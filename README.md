@@ -1,60 +1,73 @@
-## Overview:
+# 🛡️ FinShield AI: Bankruptcy Prediction Engine
 
-Financial distress and bankruptcy prediction are critical for investors, banks, and businesses to minimize risk.
+FinShield is an advanced, machine learning-powered financial risk assessment dashboard designed to predict corporate bankruptcy with high precision. By analyzing key financial indicators, FinShield provides investors, banks, and stakeholders with real-time, data-driven insights into a company's financial health.
 
-This project builds a machine learning-based bankruptcy prediction system that analyzes financial data and predicts whether a company is likely to go bankrupt.
+## 🚀 Key Features
 
-The model compares multiple algorithms:
+- **Multi-Model Prediction**: Compare results across **XGBoost**, **Random Forest**, and **Logistic Regression**.
+- **Interactive Risk Profile**: Visual radar charts comparing company risk against industry averages.
+- **Sensitivity Analysis Heatmap**: Understand how the interaction between two different risk factors (e.g., Financial Flexibility vs. Management Risk) impacts overall bankruptcy probability.
+- **Monte Carlo Simulations**: Run 1,000+ simulations to understand the statistical distribution of risk.
+- **Real-time "What-If" Scenarios**: Adjust financial indicators via sliders and see instant updates to risk scores and visualizations.
+- **Premium UI/UX**: Built with a custom glassmorphism design system, Lottie animations, and interactive feedback loops.
 
-Logistic Regression
-Random Forest
-XGBoost
+## 🏗️ Project Architecture
 
-to identify the most accurate and reliable approach.
-Problem Statement
+```mermaid
+graph TD
+    User((User)) -->|Interacts| UI[Streamlit Frontend]
+    UI -->|Input Features| Engine[Processing Logic]
+    Engine -->|Select Model| Models{ML Models}
+    Models -->|Predict| XGB[XGBoost Classifier]
+    Models -->|Predict| RF[Random Forest]
+    Models -->|Predict| LR[Logistic Regression]
+    
+    XGB --> Analytics[Advanced Analytics Engine]
+    RF --> Analytics
+    LR --> Analytics
+    
+    Analytics -->|Heatmaps/Radar| Plotly[Plotly Visualizations]
+    Analytics -->|Risk Score| UI
+    Plotly --> UI
+    
+    subgraph Data Layer
+        Excel[(Excel Dataset)] -.-> Engine
+        Synth[Synthetic Data Generator] -.-> Engine
+    end
+```
 
-Traditional financial analysis is time-consuming and often subjective.
-This project aims to:
+## 🛠️ Tech Stack
 
-Automate bankruptcy prediction
-Provide data-driven insights
-Improve decision-making for financial stakeholders
+- **Frontend**: Streamlit, Custom CSS (Glassmorphism), Lottie Animations
+- **Machine Learning**: Scikit-Learn, XGBoost, Joblib
+- **Data Science**: Pandas, NumPy
+- **Visualizations**: Plotly, Matplotlib
+- **Language**: Python 3.10+
 
-## Key Features
-Multiple ML model implementation and comparison
-Feature importance analysis
-Data preprocessing (handling missing values, normalization)
-Model evaluation using metrics like accuracy, precision, recall, F1-score
-Confusion matrix visualization
+## 📥 Installation & Setup
 
-## Tech Stack
-Language: Python
-Libraries: Scikit-learn, XGBoost, Pandas, NumPy, Matplotlib, Seaborn
-Tools: Jupyter Notebook / VS Code
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/sujal971/FinShield.git
+   cd FinShield
+   ```
 
-Dataset
-Dataset contains financial indicators such as:
-Profitability ratios
-Liquidity ratios
-Debt ratios
-(Mention dataset source here – Kaggle/UCI/etc.)
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Installation & Setup
-git clone https://github.com/your-username/bankruptcy-prediction.git
-cd bankruptcy-prediction
-pip install -r requirements.txt
+3. **Run the application**:
+   ```bash
+   streamlit run App.py
+   ```
 
-Run the notebook or script:
+## 👥 Contributors
 
-python main.py
+| Name | Role |
+| :--- | :--- |
+| **Abhinay Patel** | Backend Developer & Architect Designer |
+| **Sujal Gupta** | Frontend Developer & ML Engineer |
 
-## Model Implementation
-1. Logistic Regression
-Baseline model for binary classification
-Easy to interpret
-2. Random Forest
-Handles non-linearity well
-Reduces overfitting via ensemble learning
-3. XGBoost
-Gradient boosting technique
-High performance and accuracy
+---
+*Developed for professional financial risk assessment and educational purposes.*
