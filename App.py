@@ -535,20 +535,20 @@ def main():
     
     selected_model = trained_models[model_choice]
     prediction, probability = predict_bankruptcy(selected_model, features)
-    distress_prob = probability[1]
-    stability_score = 1.0 - distress_prob
+    distress_prob = float(probability[1])
+    stability_score = float(1.0 - distress_prob)
     credit_tier, tier_desc, tier_color = get_credit_tier(distress_prob)
 
-    # Log to history
+    # Log to history with native Python serializable types
     log_entry = {
         "timestamp": datetime.now().strftime("%H:%M:%S"),
-        "user": st.session_state.username,
-        "model": model_choice,
-        "distress_prob": distress_prob,
-        "prediction": "Bankruptcy Risk" if prediction == 1 else "Stable",
-        "tier": credit_tier
+        "user": str(st.session_state.username),
+        "model": str(model_choice),
+        "distress_prob": round(float(distress_prob), 4),
+        "prediction": "Bankruptcy Risk" if int(prediction) == 1 else "Stable",
+        "tier": str(credit_tier)
     }
-    if not st.session_state.history or st.session_state.history[-1]["distress_prob"] != distress_prob or st.session_state.history[-1]["model"] != model_choice:
+    if not st.session_state.history or st.session_state.history[-1]["distress_prob"] != log_entry["distress_prob"] or st.session_state.history[-1]["model"] != log_entry["model"]:
         st.session_state.history.append(log_entry)
 
     # Tabs Interface
@@ -939,7 +939,7 @@ def main():
                 st.dataframe(hist_df, use_container_width=True)
                 st.download_button(
                     "📥 Export Audit Trail (JSON)",
-                    json.dumps(st.session_state.history, indent=2),
+                    json.dumps(st.session_state.history, indent=2, default=str),
                     f"finshield_audit_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                     "application/json"
                 )
