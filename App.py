@@ -892,7 +892,7 @@ def main():
 
         with col_b2:
             st.markdown(f"#### 📌 Confusion Matrix: {model_choice}")
-            cm = confusion_matrix(y_test, model_scores[model_choice]['y_pred'])
+            cm = confusion_matrix(y_test, model_scores[model_choice]['y_pred'], labels=[0, 1])
             fig_cm = px.imshow(
                 cm, text_auto=True,
                 labels=dict(x="Predicted Class", y="Actual Class", color="Count"),
