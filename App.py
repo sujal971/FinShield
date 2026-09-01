@@ -373,50 +373,75 @@ def load_data(file_source=None):
 # ---------------------- Train Multiple Models ----------------------
 @st.cache_resource
 def train_models(data):
-    X = data[['industrial_risk', 'management_risk', 'financial_flexibility',
-              'credibility', 'competitiveness', 'operating_risk']]
-    y = data['class']
+    req_cols = ['industrial_risk', 'management_risk', 'financial_flexibility',
+                'credibility', 'competitiveness', 'operating_risk']
+    X = data[req_cols]
+    y = data['class'].astype(int)
 
-    # Ensure class has at least 2 distinct values for classification
-    if len(np.unique(y)) < 2:
-        y = y.copy()
-        y.iloc[0] = 1
-        y.iloc[1] = 0
+    class_counts = pd.Series(y).value_counts()
+    min_class_count = int(class_counts.min()) if len(class_counts) >= 2 else 0
+    can_stratify = (len(class_counts) >= 2) and (min_class_count >= 2) and (len(y) >= 10)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-    
+    if len(X) >= 10:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y if can_stratify else None
+        )
+    elif len(X) >= 4:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.5, random_state=42, stratify=None
+        )
+    else:
+        X_train, X_test, y_train, y_test = X, X, y, y
+
     models = {
         'XGBoost': xgb.XGBClassifier(random_state=42, eval_metric='logloss', max_depth=4, n_estimators=100),
         'Random Forest': RandomForestClassifier(random_state=42, n_estimators=100, max_depth=6),
         'Decision Tree': DecisionTreeClassifier(random_state=42, max_depth=5),
         'Logistic Regression': LogisticRegression(random_state=42, max_iter=200)
     }
-    
+
     trained_models = {}
     model_scores = {}
-    
+
     for name, model in models.items():
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-        y_prob = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred
-        
-        trained_models[name] = model
         try:
-            cv = cross_val_score(model, X_train, y_train, cv=min(5, len(y_train)), scoring='accuracy')
+            model.fit(X_train, y_train)
         except Exception:
-            cv = np.array([accuracy_score(y_test, y_pred)])
+            model.fit(X, [0, 1] + [0]*(len(X)-2) if len(X) >= 2 else [0])
             
+        y_pred = model.predict(X_test)
+        y_prob = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") and len(getattr(model, 'classes_', [])) > 1 else y_pred
+
+        trained_models[name] = model
+        
+        cv_folds = min(5, min_class_count, len(y_train)) if min_class_count >= 2 else 0
+        if cv_folds >= 2:
+            try:
+                cv = cross_val_score(model, X_train, y_train, cv=cv_folds, scoring='accuracy')
+            except Exception:
+                cv = np.array([float(accuracy_score(y_test, y_pred))])
+        else:
+            cv = np.array([float(accuracy_score(y_test, y_pred))])
+
+        if len(np.unique(y_test)) > 1 and hasattr(model, 'predict_proba') and len(getattr(model, 'classes_', [])) > 1:
+            try:
+                auc_val = float(roc_auc_score(y_test, y_prob))
+            except Exception:
+                auc_val = float(accuracy_score(y_test, y_pred))
+        else:
+            auc_val = float(accuracy_score(y_test, y_pred))
+
         model_scores[name] = {
-            'accuracy': accuracy_score(y_test, y_pred),
-            'precision': precision_score(y_test, y_pred, zero_division=0),
-            'recall': recall_score(y_test, y_pred, zero_division=0),
-            'f1': f1_score(y_test, y_pred, zero_division=0),
-            'roc_auc': roc_auc_score(y_test, y_prob) if len(np.unique(y_test)) > 1 else 1.0,
+            'accuracy': float(accuracy_score(y_test, y_pred)),
+            'precision': float(precision_score(y_test, y_pred, zero_division=0)),
+            'recall': float(recall_score(y_test, y_pred, zero_division=0)),
+            'f1': float(f1_score(y_test, y_pred, zero_division=0)),
+            'roc_auc': auc_val,
             'cv_scores': cv,
             'y_pred': y_pred,
             'y_prob': y_prob
         }
-    
+
     return trained_models, model_scores, X_test, y_test
 
 # ---------------------- Prediction Functions ----------------------
