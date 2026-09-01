@@ -1,211 +1,328 @@
-# import streamlit as st
-# import pandas as pd
-# import numpy as np
-# import xgboost as xgb
-# from sklearn.model_selection import train_test_split
-# from sklearn.metrics import accuracy_score, confusion_matrix, roc_auc_score
-# import joblib
-# import plotly.express as px
-# import plotly.graph_objects as go
-
-# # ---------------------- Load & Preprocess Data ----------------------
-# def load_data(file):
-#     data = pd.read_excel(file, sheet_name='bankruptcy-prevention', engine='openpyxl')
-#     if data.iloc[:, 0].dtype != object:
-#         data.iloc[:, 0] = data.iloc[:, 0].astype(str)
-#     data_split = data.iloc[:, 0].str.split(';', expand=True)
-#     data_split.columns = ["industrial_risk", "management_risk", "financial_flexibility",
-#                           "credibility", "competitiveness", "operating_risk", "class"]
-#     for col in data_split.columns[:-1]:
-#         data_split[col] = data_split[col].astype(float)
-#     data_split['class'] = data_split['class'].map({'non-bankruptcy': 0, 'bankruptcy': 1})
-#     return data_split
-
-# # ---------------------- Train Model ----------------------
-# def train_and_save_model(data):
-#     X = data.drop('class', axis=1)
-#     y = data['class']
-#     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-#     model = xgb.XGBClassifier(random_state=42)
-#     model.fit(X_train, y_train)
-#     joblib.dump(model, 'xgboost_model.pkl')
-#     y_pred = model.predict(X_test)
-#     y_prob = model.predict_proba(X_test)[:, 1]
-#     return model, X_test, y_test, y_pred, y_prob
-
-# def predict_bankruptcy(model, features):
-#     df = pd.DataFrame([features], columns=[
-#         'industrial_risk', 'management_risk', 'financial_flexibility',
-#         'credibility', 'competitiveness', 'operating_risk'
-#     ])
-#     prediction = model.predict(df)[0]
-#     probability = model.predict_proba(df)[0][1]
-#     return prediction, probability
-
-# # ---------------------- Feature Importance ----------------------
-# def plot_feature_importance(model):
-#     importance = model.feature_importances_
-#     features = ['industrial_risk', 'management_risk', 'financial_flexibility',
-#                 'credibility', 'competitiveness', 'operating_risk']
-#     fig = px.bar(x=importance, y=features, orientation="h",
-#                  labels={'x': 'Importance', 'y': 'Features'},
-#                  title="Feature Importance", color=importance,
-#                  color_continuous_scale='Blues')
-#     st.plotly_chart(fig, use_container_width=True)
-
-# # ---------------------- Main App ----------------------
-# def main():
-#     st.set_page_config(page_title="Bankruptcy Predictor", layout="wide")
-
-#     # Custom CSS
-#     st.markdown("""
-#         <style>
-#             body {background-color: #f9fafc;}
-#             .prediction-card {
-#                 padding: 20px; border-radius: 10px; text-align: center; font-size: 20px;
-#                 font-weight: bold; color: white;
-#             }
-#             .success {background-color: #4CAF50;}
-#             .danger {background-color: #f44336;}
-#         </style>
-#     """, unsafe_allow_html=True)
-
-#     st.title("📉 Bankruptcy Prediction Dashboard")
-#     st.write("Upload your dataset or use the default one, adjust financial risk indicators, and get instant predictions.")
-
-#     # Sidebar Inputs
-#     st.sidebar.header("🔍 Input Features")
-#     industrial_risk = st.sidebar.slider("Industrial Risk", 0.0, 1.0, 0.5, step=0.1, help="Risk from industry sector")
-#     management_risk = st.sidebar.slider("Management Risk", 0.0, 1.0, 0.5, step=0.1, help="Risk due to management decisions")
-#     financial_flexibility = st.sidebar.slider("Financial Flexibility", 0.0, 1.0, 0.5, step=0.1)
-#     credibility = st.sidebar.slider("Credibility", 0.0, 1.0, 0.5, step=0.1)
-#     competitiveness = st.sidebar.slider("Competitiveness", 0.0, 1.0, 0.5, step=0.1)
-#     operating_risk = st.sidebar.slider("Operating Risk", 0.0, 1.0, 0.5, step=0.1)
-
-#     st.sidebar.markdown("📁 Upload your Excel file")
-#     uploaded_file = st.sidebar.file_uploader("Choose a file", type=["xlsx"])
-#     if uploaded_file:
-#         data = load_data(uploaded_file)
-#     else:
-#         data = load_data(r"C:\Users\HP\OneDrive\Documents\bankruptcy-prevention (1).xlsx")
-
-#     model, X_test, y_test, y_pred, y_prob = train_and_save_model(data)
-
-#     # Tabs
-#     tab1, tab2, tab3 = st.tabs(["🔮 Prediction", "📊 Model Metrics", "📌 Feature Importance"])
-
-#     with tab1:
-#         st.subheader("Prediction Result")
-#         if st.button("Predict Bankruptcy"):
-#             features = [industrial_risk, management_risk, financial_flexibility,
-#                         credibility, competitiveness, operating_risk]
-#             prediction, probability = predict_bankruptcy(model, features)
-
-#             # Colored card
-#             if prediction == 1:
-#                 st.markdown(f"<div class='prediction-card danger'>🚨 Bankruptcy Predicted<br>Confidence: {probability:.2%}</div>", unsafe_allow_html=True)
-#             else:
-#                 st.markdown(f"<div class='prediction-card success'>✅ Non-Bankruptcy Predicted<br>Confidence: {probability:.2%}</div>", unsafe_allow_html=True)
-
-#             # Gauge Chart
-#             fig = go.Figure(go.Indicator(
-#                 mode="gauge+number",
-#                 value=probability * 100,
-#                 title={'text': "Bankruptcy Probability (%)"},
-#                 gauge={'axis': {'range': [0, 100]},
-#                        'bar': {'color': "darkred" if prediction == 1 else "green"}}
-#             ))
-#             st.plotly_chart(fig, use_container_width=True)
-
-#     with tab2:
-#         st.subheader("Model Evaluation")
-#         col1, col2 = st.columns(2)
-#         with col1:
-#             st.metric("Accuracy", f"{accuracy_score(y_test, y_pred):.2f}")
-#             st.metric("ROC AUC", f"{roc_auc_score(y_test, y_prob):.2f}")
-#         with col2:
-#             with st.expander("📌 Confusion Matrix"):
-#                 st.dataframe(pd.DataFrame(confusion_matrix(y_test, y_pred),
-#                                           columns=["Predicted Non-Bankruptcy", "Predicted Bankruptcy"],
-#                                           index=["Actual Non-Bankruptcy", "Actual Bankruptcy"]))
-#         with st.expander("📄 Preview Data"):
-#             st.dataframe(data.head())
-
-#     with tab3:
-#         st.subheader("Feature Importance")
-#         plot_feature_importance(model)
-
-#     # Feedback
-#     st.markdown("---")
-#     with st.expander("💬 Feedback"):
-#         st.text_area("Share your thoughts or suggestions:")
-
-#     st.markdown("<p style='text-align: center; color: gray;'>Made with ❤️ by Abhinay</p>", unsafe_allow_html=True)
-
-
-# if __name__ == "__main__":
-#     main()
-
-
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import accuracy_score, confusion_matrix, roc_auc_score, classification_report
+from sklearn.metrics import accuracy_score, confusion_matrix, roc_auc_score, classification_report, precision_score, recall_score, f1_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
 import joblib
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import requests
 from streamlit_lottie import st_lottie
+import json
+import os
 
-# ---------------------- Helper Functions ----------------------
+# ---------------------- Page Configuration ----------------------
+st.set_page_config(
+    page_title="FinShield AI | Corporate Bankruptcy Risk Engine",
+    page_icon="🛡️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ---------------------- Custom CSS & Glassmorphism Theme ----------------------
+st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+        
+        * {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        code, pre {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+        
+        .main-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+            border-radius: 20px;
+            padding: 2.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .main-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .auth-container {
+            max-width: 480px;
+            margin: 40px auto;
+            padding: 40px;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .auth-header {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-subtitle {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+        }
+
+        .prediction-card {
+            padding: 28px;
+            border-radius: 20px;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            margin: 15px 0;
+        }
+
+        .prediction-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.2);
+        }
+
+        .success-gradient {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        }
+
+        .danger-gradient {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            animation: pulse-danger 2.5s infinite;
+        }
+
+        @keyframes pulse-danger {
+            0%, 100% { box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.4); }
+            50% { box-shadow: 0 20px 35px 5px rgba(239, 68, 68, 0.6); }
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+        }
+
+        .user-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #f1f5f9;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            margin-bottom: 15px;
+        }
+
+        .risk-pill {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .risk-pill-high { background: #fee2e2; color: #991b1b; }
+        .risk-pill-medium { background: #fef3c7; color: #92400e; }
+        .risk-pill-low { background: #dcfce7; color: #166534; }
+
+        .tier-badge {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# ---------------------- Session State & Authentication System ----------------------
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "username" not in st.session_state:
+    st.session_state.username = "Guest"
+if "user_role" not in st.session_state:
+    st.session_state.user_role = "Financial Analyst"
+if "history" not in st.session_state:
+    st.session_state.history = []
+if "registered_users" not in st.session_state:
+    st.session_state.registered_users = {
+        "admin": {"password": "admin123", "role": "Risk Director", "name": "Director of Risk"},
+        "analyst": {"password": "finshield123", "role": "Senior Financial Analyst", "name": "Sujal Gupta"},
+        "abhinay": {"password": "finshield123", "role": "Chief Architect", "name": "Abhinay Patel"}
+    }
+
+# ---------------------- Helper: Lottie Loader ----------------------
+@st.cache_data
 def load_lottieurl(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
+    try:
+        r = requests.get(url, timeout=3)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return None
 
-# Lottie Assets
 lottie_financial = load_lottieurl("https://lottie.host/85a2d61b-9e42-4f0e-b016-8656f4d3261a/8pQZkYJmIq.json")
-lottie_risk = load_lottieurl("https://lottie.host/385800f4-52d9-4b68-98f5-19e9f67a213e/p4bXlH2v9o.json")
-lottie_success = load_lottieurl("https://lottie.host/642f8832-72cc-4995-b9f1-9457f59d482c/E2W8vUuUaR.json")
+
+# ---------------------- Authentication View ----------------------
+def render_auth_page():
+    col_l, col_c, col_r = st.columns([1, 2, 1])
+    with col_c:
+        st.markdown("""
+            <div class="auth-container">
+                <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">🛡️</div>
+                <div class="auth-header">FinShield AI</div>
+                <div class="auth-subtitle">Enterprise Corporate Bankruptcy & Credit Risk Assessment Platform</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        auth_tab1, auth_tab2 = st.tabs(["🔐 Secure Sign In", "📝 Create Account"])
+
+        with auth_tab1:
+            with st.form("login_form"):
+                username_input = st.text_input("Username / Email", placeholder="e.g. analyst or admin", key="login_user")
+                password_input = st.text_input("Password", type="password", placeholder="Enter your password", key="login_pass")
+                submit_login = st.form_submit_button("🚀 Sign In to Dashboard", use_container_width=True)
+
+                if submit_login:
+                    if username_input in st.session_state.registered_users and st.session_state.registered_users[username_input]["password"] == password_input:
+                        st.session_state.authenticated = True
+                        st.session_state.username = username_input
+                        st.session_state.user_role = st.session_state.registered_users[username_input]["role"]
+                        st.toast(f"Welcome back, {st.session_state.registered_users[username_input]['name']}!", icon="👋")
+                        st.rerun()
+                    else:
+                        st.error("❌ Invalid credentials. Please check your username and password.")
+
+            st.markdown("---")
+            st.markdown("##### ⚡ Quick Demo Access:")
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                if st.button("👨‍💼 Login as Financial Analyst", use_container_width=True):
+                    st.session_state.authenticated = True
+                    st.session_state.username = "analyst"
+                    st.session_state.user_role = "Senior Financial Analyst"
+                    st.toast("Logged in as Senior Financial Analyst!", icon="🚀")
+                    st.rerun()
+            with col_d2:
+                if st.button("🛡️ Login as Risk Director", use_container_width=True):
+                    st.session_state.authenticated = True
+                    st.session_state.username = "admin"
+                    st.session_state.user_role = "Risk Director"
+                    st.toast("Logged in as Risk Director!", icon="🛡️")
+                    st.rerun()
+
+        with auth_tab2:
+            with st.form("signup_form"):
+                new_username = st.text_input("Choose Username", placeholder="e.g. jdoe")
+                new_name = st.text_input("Full Name", placeholder="e.g. Jane Doe")
+                new_role = st.selectbox("Role / Department", [
+                    "Financial Analyst", "Credit Risk Officer", "Investment Banker", "Portfolio Manager", "Auditor"
+                ])
+                new_password = st.text_input("Create Password", type="password", placeholder="Minimum 6 characters")
+                confirm_password = st.text_input("Confirm Password", type="password")
+                submit_signup = st.form_submit_button("✨ Register New Account", use_container_width=True)
+
+                if submit_signup:
+                    if not new_username or not new_password:
+                        st.error("Please fill in all required fields.")
+                    elif new_username in st.session_state.registered_users:
+                        st.error("Username already exists. Please choose a different one.")
+                    elif new_password != confirm_password:
+                        st.error("Passwords do not match.")
+                    else:
+                        st.session_state.registered_users[new_username] = {
+                            "password": new_password,
+                            "role": new_role,
+                            "name": new_name or new_username
+                        }
+                        st.success("✅ Account successfully created! Please sign in using the 'Secure Sign In' tab.")
+
+if not st.session_state.authenticated:
+    render_auth_page()
+    st.stop()
 
 # ---------------------- Load & Preprocess Data ----------------------
 @st.cache_data
-def load_data(file):
-    if isinstance(file, str):
-        data = pd.read_excel(file, sheet_name='bankruptcy-prevention', engine='openpyxl')
+def load_data(file_source=None):
+    if file_source is None:
+        if os.path.exists("bankruptcy-prevention.xlsx"):
+            file_source = "bankruptcy-prevention.xlsx"
+        elif os.path.exists("bankruptcy-prevention.csv"):
+            file_source = "bankruptcy-prevention.csv"
+            
+    if isinstance(file_source, str) and file_source.endswith(".csv"):
+        data = pd.read_csv(file_source)
     else:
-        data = pd.read_excel(file, sheet_name='bankruptcy-prevention', engine='openpyxl')
+        try:
+            data = pd.read_excel(file_source, sheet_name='bankruptcy-prevention', engine='openpyxl')
+        except Exception:
+            data = pd.read_excel(file_source, engine='openpyxl')
+            
+    # Handle semicolon separated dataset format if present
+    if len(data.columns) == 1 or ';' in str(data.iloc[0, 0]):
+        if data.iloc[:, 0].dtype != object:
+            data.iloc[:, 0] = data.iloc[:, 0].astype(str)
+        data_split = data.iloc[:, 0].str.split(';', expand=True)
+        data_split.columns = [
+            "industrial_risk", "management_risk", "financial_flexibility",
+            "credibility", "competitiveness", "operating_risk", "class"
+        ]
+        data = data_split
+
+    for col in data.columns[:-1]:
+        data[col] = pd.to_numeric(data[col], errors='coerce').fillna(0.0)
+
+    data['class'] = data['class'].astype(str).str.lower().str.strip().map({
+        'non-bankruptcy': 0, 'bankruptcy': 1, '0': 0, '1': 1, '0.0': 0, '1.0': 1, 'healthy': 0, 'distress': 1
+    }).fillna(0).astype(int)
     
-    if data.iloc[:, 0].dtype != object:
-        data.iloc[:, 0] = data.iloc[:, 0].astype(str)
-    data_split = data.iloc[:, 0].str.split(';', expand=True)
-    data_split.columns = ["industrial_risk", "management_risk", "financial_flexibility",
-                          "credibility", "competitiveness", "operating_risk", "class"]
-    for col in data_split.columns[:-1]:
-        data_split[col] = data_split[col].astype(float)
-    data_split['class'] = data_split['class'].map({'non-bankruptcy': 0, 'bankruptcy': 1})
-    return data_split
+    return data
 
 # ---------------------- Train Multiple Models ----------------------
 @st.cache_resource
 def train_models(data):
     X = data.drop('class', axis=1)
     y = data['class']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     models = {
-        'XGBoost': xgb.XGBClassifier(random_state=42),
-        'Random Forest': RandomForestClassifier(random_state=42),
-        'Logistic Regression': LogisticRegression(random_state=42)
+        'XGBoost': xgb.XGBClassifier(random_state=42, eval_metric='logloss', max_depth=4, n_estimators=100),
+        'Random Forest': RandomForestClassifier(random_state=42, n_estimators=100, max_depth=6),
+        'Decision Tree': DecisionTreeClassifier(random_state=42, max_depth=5),
+        'Logistic Regression': LogisticRegression(random_state=42, max_iter=200)
     }
     
     trained_models = {}
@@ -214,13 +331,19 @@ def train_models(data):
     for name, model in models.items():
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
-        y_prob = model.predict_proba(X_test)[:, 1]
+        y_prob = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred
         
         trained_models[name] = model
+        cv = cross_val_score(model, X_train, y_train, cv=5, scoring='accuracy')
         model_scores[name] = {
             'accuracy': accuracy_score(y_test, y_pred),
-            'roc_auc': roc_auc_score(y_test, y_prob),
-            'cv_scores': cross_val_score(model, X_train, y_train, cv=5)
+            'precision': precision_score(y_test, y_pred, zero_division=0),
+            'recall': recall_score(y_test, y_pred, zero_division=0),
+            'f1': f1_score(y_test, y_pred, zero_division=0),
+            'roc_auc': roc_auc_score(y_test, y_prob) if len(np.unique(y_test)) > 1 else 1.0,
+            'cv_scores': cv,
+            'y_pred': y_pred,
+            'y_prob': y_prob
         }
     
     return trained_models, model_scores, X_test, y_test
@@ -231,31 +354,52 @@ def predict_bankruptcy(model, features):
         'industrial_risk', 'management_risk', 'financial_flexibility',
         'credibility', 'competitiveness', 'operating_risk'
     ])
-    prediction = model.predict(df)[0]
-    probability = model.predict_proba(df)[0]
+    prediction = int(model.predict(df)[0])
+    if hasattr(model, "predict_proba"):
+        probability = model.predict_proba(df)[0]
+    else:
+        probability = np.array([1.0 - prediction, float(prediction)])
     return prediction, probability
 
+def get_credit_tier(prob_bankruptcy):
+    """Determine credit rating tier based on bankruptcy probability"""
+    if prob_bankruptcy < 0.05:
+        return "AAA", "Prime Financial Health", "#10b981"
+    elif prob_bankruptcy < 0.15:
+        return "AA", "High Grade Quality", "#059669"
+    elif prob_bankruptcy < 0.30:
+        return "A", "Upper Medium Grade", "#3b82f6"
+    elif prob_bankruptcy < 0.45:
+        return "BBB", "Investment Grade Solvency", "#f59e0b"
+    elif prob_bankruptcy < 0.60:
+        return "BB", "Speculative / Vulnerable", "#f97316"
+    elif prob_bankruptcy < 0.75:
+        return "B", "Highly Speculative", "#ea580c"
+    elif prob_bankruptcy < 0.90:
+        return "CCC", "Substantial Risk of Default", "#dc2626"
+    else:
+        return "D", "In Default / Near Failure", "#991b1b"
+
 def risk_assessment(features):
-    """Provide risk assessment based on feature values"""
     risks = []
     feature_names = ['Industrial Risk', 'Management Risk', 'Financial Flexibility',
                     'Credibility', 'Competitiveness', 'Operating Risk']
     
     for i, (name, value) in enumerate(zip(feature_names, features)):
-        if i == 2:  # Financial flexibility is inverse (higher = better)
-            if value < 0.3:
-                risks.append(f"⚠️ Low {name}: {value:.1f}")
-            elif value < 0.6:
-                risks.append(f"⚡ Moderate {name}: {value:.1f}")
+        if i == 2:  # Financial flexibility (higher = better)
+            if value <= 0.2:
+                risks.append(("🚨 Critical Deficit", f"Critically Low {name} ({value:.1f}) - Inability to handle liquidity shocks", "high"))
+            elif value <= 0.5:
+                risks.append(("⚠️ Moderate Concern", f"Restricted {name} ({value:.1f}) - Buffer against market downturns is slim", "medium"))
         else:
-            if value > 0.7:
-                risks.append(f"🚨 High {name}: {value:.1f}")
-            elif value > 0.5:
-                risks.append(f"⚠️ Moderate {name}: {value:.1f}")
+            if value >= 0.8:
+                risks.append(("🚨 High Exposure", f"Elevated {name} ({value:.1f}) - Sector/Operational vulnerability", "high"))
+            elif value >= 0.5:
+                risks.append(("⚠️ Moderate Exposure", f"Notable {name} ({value:.1f}) - Requires active risk hedging", "medium"))
     
     return risks
 
-# ---------------------- Interactive Visualizations ----------------------
+# ---------------------- Visualizations ----------------------
 def create_radar_chart(features):
     categories = ['Industrial Risk', 'Management Risk', 'Financial Flexibility',
                  'Credibility', 'Competitiveness', 'Operating Risk']
@@ -265,73 +409,42 @@ def create_radar_chart(features):
         r=features,
         theta=categories,
         fill='toself',
-        name='Current Company',
-        line_color='rgb(1,90,200)'
+        name='Evaluated Company',
+        line=dict(color='#6366f1', width=2),
+        fillcolor='rgba(99, 102, 241, 0.25)'
     ))
     
-    # Add industry average (simulated)
-    avg_features = [0.4, 0.3, 0.7, 0.8, 0.6, 0.4]
+    # Industry Average
+    avg_features = [0.4, 0.35, 0.65, 0.70, 0.60, 0.40]
     fig.add_trace(go.Scatterpolar(
         r=avg_features,
         theta=categories,
         fill='toself',
-        name='Industry Average',
-        line_color='rgb(255,140,0)',
-        opacity=0.6
+        name='Industry Median',
+        line=dict(color='#f59e0b', width=1.5, dash='dash'),
+        fillcolor='rgba(245, 158, 11, 0.15)'
+    ))
+
+    # Top Quartile Benchmark
+    top_features = [0.15, 0.10, 0.90, 0.95, 0.90, 0.15]
+    fig.add_trace(go.Scatterpolar(
+        r=top_features,
+        theta=categories,
+        fill='none',
+        name='Top Quartile Benchmark',
+        line=dict(color='#10b981', width=1.5, dash='dot')
     ))
     
     fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=True, range=[0, 1])
-        ),
+        polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
         showlegend=True,
-        title="Risk Profile Comparison"
+        title=dict(text="Multidimensional Risk Radar Profile", font=dict(size=15, weight="bold")),
+        margin=dict(l=40, r=40, t=40, b=40),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
     )
     return fig
 
-def create_time_series_simulation(probability, days=30):
-    """Simulate probability changes over time"""
-    dates = pd.date_range(start=datetime.now(), periods=days, freq='D')
-    # Add some random variation
-    probabilities = [probability + np.random.normal(0, 0.02) for _ in range(days)]
-    probabilities = [max(0, min(1, p)) for p in probabilities]  # Keep within bounds
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=dates,
-        y=probabilities,
-        mode='lines+markers',
-        name='Bankruptcy Probability',
-        line=dict(color='red' if probability > 0.5 else 'green')
-    ))
-    
-    fig.add_hline(y=0.5, line_dash="dash", line_color="orange", 
-                  annotation_text="Risk Threshold")
-    
-    fig.update_layout(
-        title="Bankruptcy Risk Trend (Simulated)",
-        xaxis_title="Date",
-        yaxis_title="Probability",
-        yaxis=dict(range=[0, 1])
-    )
-    return fig
-
-def plot_model_comparison(model_scores):
-    models = list(model_scores.keys())
-    accuracies = [model_scores[model]['accuracy'] for model in models]
-    roc_aucs = [model_scores[model]['roc_auc'] for model in models]
-    
-    fig = make_subplots(rows=1, cols=2, subplot_titles=['Accuracy', 'ROC AUC'])
-    
-    fig.add_trace(go.Bar(x=models, y=accuracies, name='Accuracy', marker_color='lightblue'), row=1, col=1)
-    fig.add_trace(go.Bar(x=models, y=roc_aucs, name='ROC AUC', marker_color='lightcoral'), row=1, col=2)
-    
-    fig.update_layout(showlegend=False, title="Model Performance Comparison")
-    return fig
-
-# ---------------------- Scenario Analysis ----------------------
 def sensitivity_analysis(model, features, feat1_idx, feat2_idx):
-    """Generate data for sensitivity heatmap"""
     x_range = np.linspace(0, 1, 11)
     y_range = np.linspace(0, 1, 11)
     z = np.zeros((11, 11))
@@ -346,332 +459,211 @@ def sensitivity_analysis(model, features, feat1_idx, feat2_idx):
             
     return x_range, y_range, z
 
-# ---------------------- Main App ----------------------
+# ---------------------- Main Application ----------------------
 def main():
-    st.set_page_config(
-        page_title="AI Bankruptcy Predictor Pro", 
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-
-    # Enhanced CSS
-    st.markdown("""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-            
-            * { font-family: 'Inter', sans-serif; }
-            
-            .main-header {
-                background: rgba(255, 255, 255, 0.1);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                padding: 3rem;
-                border-radius: 20px;
-                margin-bottom: 2.5rem;
-                text-align: center;
-                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                color: white;
-            }
-            
-            .stApp {
-                background: #f0f2f6;
-            }
-            
-            .prediction-card {
-                padding: 30px; 
-                border-radius: 20px; 
-                text-align: center; 
-                transition: all 0.3s ease;
-                box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-                border: 1px solid rgba(255,255,255,0.2);
-            }
-            
-            .prediction-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 15px 30px rgba(0,0,0,0.15);
-            }
-            
-            .success {
-                background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
-            }
-            
-            .danger {
-                background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-                animation: pulse 2s infinite;
-            }
-            
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.02); }
-                100% { transform: scale(1); }
-            }
-            
-            .glass-card {
-                background: rgba(255, 255, 255, 0.8);
-                padding: 20px;
-                border-radius: 15px;
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-                margin-bottom: 20px;
-            }
-            
-            .metric-label {
-                font-size: 0.9rem;
-                color: #666;
-                font-weight: 600;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # Header with Lottie
-    col1, col2, col3 = st.columns([1, 4, 1])
-    with col2:
-        st.markdown("""
+    # Top Navigation & User Header
+    top_c1, top_c2 = st.columns([3, 1])
+    with top_c1:
+        st.markdown(f"""
             <div class="main-header">
-                <h1 style="font-size: 3rem; margin-bottom: 0;">🛡️ FinShield AI</h1>
-                <p style="font-size: 1.2rem; opacity: 0.9;">Professional Bankruptcy Prediction & Risk Analysis Engine</p>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span style="font-size: 2.8rem;">🛡️</span>
+                    <div>
+                        <h1 style="margin: 0; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px;">FinShield AI Enterprise</h1>
+                        <p style="margin: 0; opacity: 0.85; font-size: 1rem;">Machine Learning-Driven Corporate Bankruptcy & Distress Prediction System</p>
+                    </div>
+                </div>
             </div>
         """, unsafe_allow_html=True)
-    with col3:
-        if lottie_financial:
-            st_lottie(lottie_financial, height=150, key="header_lottie")
+    with top_c2:
+        st.markdown(f"""
+            <div class="stat-card" style="text-align: center; height: 85%;">
+                <div style="font-size: 0.8rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Active Session</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-top: 4px;">{st.session_state.username}</div>
+                <div class="user-badge" style="margin: 8px auto 0 auto;">{st.session_state.user_role}</div>
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("🚪 Sign Out", use_container_width=True):
+            st.session_state.authenticated = False
+            st.session_state.username = "Guest"
+            st.rerun()
 
-    # Sidebar with Enhanced Controls
-    st.sidebar.markdown("## 🎛️ Control Panel")
+    # Sidebar: Controls & Financial Risk Inputs
+    st.sidebar.markdown("### 🎛️ AI Control Panel")
     
-    # Model selection
     model_choice = st.sidebar.selectbox(
-        "🧠 Choose AI Model",
-        ["XGBoost", "Random Forest", "Logistic Regression"],
-        help="Different algorithms for prediction"
+        "🧠 Active Prediction Model",
+        ["XGBoost", "Random Forest", "Decision Tree", "Logistic Regression"],
+        help="Select the underlying machine learning classification algorithm."
     )
     
-    # Interactive mode
-    interactive_mode = st.sidebar.toggle("🔄 Real-time Mode", value=True, help="Update predictions automatically")
+    interactive_mode = st.sidebar.toggle("⚡ Real-Time Auto-Compute", value=True)
     
-    st.sidebar.markdown("### 📊 Financial Risk Indicators")
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📊 Financial Risk Parameters")
     
-    # Enhanced sliders with better descriptions
-    industrial_risk = st.sidebar.slider(
-        "🏭 Industrial Risk", 0.0, 1.0, 0.5, step=0.1,
-        help="Risk from industry volatility and market conditions"
-    )
-    management_risk = st.sidebar.slider(
-        "👥 Management Risk", 0.0, 1.0, 0.5, step=0.1,
-        help="Risk from management decisions and leadership quality"
-    )
-    financial_flexibility = st.sidebar.slider(
-        "💰 Financial Flexibility", 0.0, 1.0, 0.5, step=0.1,
-        help="Company's ability to adapt to financial challenges"
-    )
-    credibility = st.sidebar.slider(
-        "🏆 Credibility", 0.0, 1.0, 0.5, step=0.1,
-        help="Market trust and reputation score"
-    )
-    competitiveness = st.sidebar.slider(
-        "⚡ Competitiveness", 0.0, 1.0, 0.5, step=0.1,
-        help="Ability to compete in the market"
-    )
-    operating_risk = st.sidebar.slider(
-        "⚙️ Operating Risk", 0.0, 1.0, 0.5, step=0.1,
-        help="Risk from operational processes and efficiency"
-    )
+    industrial_risk = st.sidebar.slider("🏭 Industrial Risk", 0.0, 1.0, 0.5, step=0.1, help="Sector volatility and market cyclicality")
+    management_risk = st.sidebar.slider("👥 Management Risk", 0.0, 1.0, 0.5, step=0.1, help="Corporate governance and executive decision efficacy")
+    financial_flexibility = st.sidebar.slider("💰 Financial Flexibility", 0.0, 1.0, 0.5, step=0.1, help="Ability to raise capital & adapt to shocks (Higher = Healthier)")
+    credibility = st.sidebar.slider("🏆 Credibility Score", 0.0, 1.0, 0.5, step=0.1, help="Creditworthiness, market trust, and payment history")
+    competitiveness = st.sidebar.slider("⚡ Competitiveness", 0.0, 1.0, 0.5, step=0.1, help="Market share and pricing power")
+    operating_risk = st.sidebar.slider("⚙️ Operating Risk", 0.0, 1.0, 0.5, step=0.1, help="Supply chain, internal processes, and cost structure")
     
-    # Quick preset buttons
-    st.sidebar.markdown("### 🎯 Quick Presets")
-    col1, col2 = st.sidebar.columns(2)
-    
-    if col1.button("🟢 Healthy Co."):
-        industrial_risk, management_risk, operating_risk = 0.2, 0.1, 0.2
-        financial_flexibility, credibility, competitiveness = 0.8, 0.9, 0.8
-    
-    if col2.button("🔴 At-Risk Co."):
-        industrial_risk, management_risk, operating_risk = 0.8, 0.7, 0.8
-        financial_flexibility, credibility, competitiveness = 0.2, 0.3, 0.2
+    st.sidebar.markdown("### 🎯 Quick Stress Archetypes")
+    preset_cols = st.sidebar.columns(3)
+    if preset_cols[0].button("🟢 Prime"):
+        industrial_risk, management_risk, operating_risk = 0.1, 0.1, 0.1
+        financial_flexibility, credibility, competitiveness = 0.9, 0.9, 0.9
+    if preset_cols[1].button("🟡 Average"):
+        industrial_risk, management_risk, operating_risk = 0.5, 0.5, 0.5
+        financial_flexibility, credibility, competitiveness = 0.5, 0.5, 0.5
+    if preset_cols[2].button("🔴 Distress"):
+        industrial_risk, management_risk, operating_risk = 0.9, 0.8, 0.9
+        financial_flexibility, credibility, competitiveness = 0.1, 0.2, 0.1
 
-    # File upload
-    st.sidebar.markdown("### 📁 Data Upload")
-    uploaded_file = st.sidebar.file_uploader("Upload Excel file", type=["xlsx"])
+    # Data Loader
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📁 Dataset Source")
+    uploaded_file = st.sidebar.file_uploader("Upload custom Excel / CSV", type=["xlsx", "csv"])
     
-    # Load data
-    try:
-        if uploaded_file:
-            data = load_data(uploaded_file)
-            st.sidebar.success("✅ Custom data loaded!")
-        else:
-            # Use default file path - you may need to adjust this
-            data = load_data("bankruptcy-prevention.xlsx")  # Adjust path as needed
-            st.sidebar.info("📋 Using sample data")
-    except Exception as e:
-        st.sidebar.error("❌ Could not load data. Using synthetic data.")
-        # Create synthetic data if file not found
-        np.random.seed(42)
-        data = pd.DataFrame({
-            'industrial_risk': np.random.uniform(0, 1, 250),
-            'management_risk': np.random.uniform(0, 1, 250),
-            'financial_flexibility': np.random.uniform(0, 1, 250),
-            'credibility': np.random.uniform(0, 1, 250),
-            'competitiveness': np.random.uniform(0, 1, 250),
-            'operating_risk': np.random.uniform(0, 1, 250),
-            'class': np.random.choice([0, 1], 250, p=[0.7, 0.3])
-        })
+    data = load_data(uploaded_file)
+    trained_models, model_scores, X_test, y_test = train_models(data)
 
-    # Train models
-    with st.spinner("🔄 Training AI models..."):
-        trained_models, model_scores, X_test, y_test = train_models(data)
-
-    # Current features
+    # Current Evaluation Feature Vector
     features = [industrial_risk, management_risk, financial_flexibility,
                 credibility, competitiveness, operating_risk]
     
-    # Real-time prediction
     selected_model = trained_models[model_choice]
     prediction, probability = predict_bankruptcy(selected_model, features)
+    distress_prob = probability[1]
+    stability_score = 1.0 - distress_prob
+    credit_tier, tier_desc, tier_color = get_credit_tier(distress_prob)
 
-    # Main content tabs
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "🔮 Live Prediction", 
-        "📊 Advanced Analytics", 
-        "🎯 Scenario Analysis",
-        "📈 Model Performance",
-        "🔍 Risk Assessment",
-        "📋 Data Explorer"
+    # Log to history
+    log_entry = {
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "user": st.session_state.username,
+        "model": model_choice,
+        "distress_prob": distress_prob,
+        "prediction": "Bankruptcy Risk" if prediction == 1 else "Stable",
+        "tier": credit_tier
+    }
+    if not st.session_state.history or st.session_state.history[-1]["distress_prob"] != distress_prob or st.session_state.history[-1]["model"] != model_choice:
+        st.session_state.history.append(log_entry)
+
+    # Tabs Interface
+    tab_pred, tab_adv, tab_stress, tab_batch, tab_models, tab_advisory, tab_data = st.tabs([
+        "🔮 Real-Time Predictor",
+        "📊 Advanced Analytics",
+        "🎯 Stress Testing & Monte Carlo",
+        "📂 Batch Processing",
+        "📈 ML Benchmark",
+        "💡 AI Advisory",
+        "📋 Data & Audit Trail"
     ])
 
-    with tab1:
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            # Dynamic prediction display
-            if interactive_mode:
-                prediction_placeholder = st.empty()
-                gauge_placeholder = st.empty()
-                
-                with prediction_placeholder.container():
-                    if prediction == 1:
-                        st.markdown(f"""
-                            <div class='prediction-card danger'>
-                                🚨 BANKRUPTCY RISK DETECTED<br>
-                                <span style='font-size:18px'>Probability: {probability[1]:.2%}</span><br>
-                                <span style='font-size:14px'>Model: {model_choice}</span>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                            <div class='prediction-card success'>
-                                ✅ FINANCIALLY STABLE<br>
-                                <span style='font-size:18px'>Safety Score: {(1-probability[1]):.2%}</span><br>
-                                <span style='font-size:14px'>Model: {model_choice}</span>
-                            </div>
-                        """, unsafe_allow_html=True)
-                
-                with gauge_placeholder.container():
-                    # Enhanced gauge chart
-                    fig = go.Figure(go.Indicator(
-                        mode = "gauge+number+delta",
-                        value = probability[1] * 100,
-                        domain = {'x': [0, 1], 'y': [0, 1]},
-                        title = {'text': "Bankruptcy Risk Level (%)"},
-                        delta = {'reference': 50},
-                        gauge = {
-                            'axis': {'range': [None, 100]},
-                            'bar': {'color': "darkred" if prediction == 1 else "darkgreen"},
-                            'steps': [
-                                {'range': [0, 25], 'color': "lightgreen"},
-                                {'range': [25, 50], 'color': "yellow"},
-                                {'range': [50, 75], 'color': "orange"},
-                                {'range': [75, 100], 'color': "red"}
-                            ],
-                            'threshold': {
-                                'line': {'color': "black", 'width': 4},
-                                'thickness': 0.75,
-                                'value': 50
-                            }
-                        }
-                    ))
-                    fig.update_layout(height=400)
-                    st.plotly_chart(fig, use_container_width=True)
-            
-            # Risk factors analysis
-            risks = risk_assessment(features)
-            if risks:
-                st.subheader("⚠️ Risk Factors Identified")
-                for risk in risks:
-                    st.markdown(f"<div class='risk-item'>{risk}</div>", unsafe_allow_html=True)
-        
-        with col2:
-            # Real-time metrics
-            st.subheader("📊 Live Metrics")
-            
-            st.metric(
-                label="Risk Score",
-                value=f"{probability[1]:.2%}",
-                delta=f"{(probability[1] - 0.5):.2%}" if probability[1] != 0.5 else "0.00%"
-            )
-            
-            st.metric(
-                label="Safety Buffer",
-                value=f"{max(0, 0.5 - probability[1]):.2%}",
-                delta="Healthy" if probability[1] < 0.5 else "At Risk"
-            )
-            
-            st.metric(
-                label="Model Confidence",
-                value=f"{max(probability):.2%}",
-                delta="High" if max(probability) > 0.7 else "Moderate"
-            )
-            
-            # Radar chart
-            st.subheader("🎯 Risk Profile")
-            radar_fig = create_radar_chart(features)
-            st.plotly_chart(radar_fig, use_container_width=True, height=300)
-            
-            # Interactive Balloons/Confetti
-            if prediction == 0 and probability[1] < 0.2:
-                if st.button("Celebrate Stability! ✨"):
-                    st.balloons()
-                    st.toast("Company is in excellent health!", icon="🌟")
+    # ---------------- TAB 1: REAL-TIME PREDICTOR ----------------
+    with tab_pred:
+        col_res1, col_res2 = st.columns([1.8, 1.2])
 
-    with tab2:
-        st.subheader("📊 Advanced Analytics Dashboard")
+        with col_res1:
+            if prediction == 1:
+                st.markdown(f"""
+                    <div class="prediction-card danger-gradient">
+                        <div style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px;">🚨 DISTRESS RISK DETECTED</div>
+                        <div style="font-size: 1.15rem; margin-top: 8px; opacity: 0.95;">Estimated Probability of Bankruptcy: <strong>{distress_prob:.1%}</strong></div>
+                        <div style="font-size: 0.9rem; opacity: 0.8; margin-top: 4px;">Classified by {model_choice} AI Model</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                    <div class="prediction-card success-gradient">
+                        <div style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px;">✅ FINANCIALLY STABLE</div>
+                        <div style="font-size: 1.15rem; margin-top: 8px; opacity: 0.95;">Financial Solvency Score: <strong>{stability_score:.1%}</strong></div>
+                        <div style="font-size: 0.9rem; opacity: 0.8; margin-top: 4px;">Classified by {model_choice} AI Model</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            # Gauge Chart
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number+delta",
+                value=distress_prob * 100,
+                domain={'x': [0, 1], 'y': [0, 1]},
+                title={'text': "<b>Bankruptcy Probability Gauge (%)</b>", 'font': {'size': 18}},
+                delta={'reference': 50, 'increasing': {'color': "#ef4444"}, 'decreasing': {'color': "#10b981"}},
+                gauge={
+                    'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#334155"},
+                    'bar': {'color': "#dc2626" if prediction == 1 else "#059669", 'thickness': 0.3},
+                    'bgcolor': "white",
+                    'borderwidth': 2,
+                    'bordercolor': "#cbd5e1",
+                    'steps': [
+                        {'range': [0, 20], 'color': "rgba(16, 185, 129, 0.25)"},
+                        {'range': [20, 45], 'color': "rgba(59, 130, 246, 0.25)"},
+                        {'range': [45, 70], 'color': "rgba(245, 158, 11, 0.25)"},
+                        {'range': [70, 100], 'color': "rgba(239, 68, 68, 0.3)"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#0f172a", 'width': 4},
+                        'thickness': 0.8,
+                        'value': 50
+                    }
+                }
+            ))
+            fig_gauge.update_layout(height=360, margin=dict(l=20, r=20, t=50, b=20))
+            st.plotly_chart(fig_gauge, use_container_width=True)
+
+            # Risk factors
+            identified_risks = risk_assessment(features)
+            st.markdown("#### 🔍 Primary Risk Factor Diagnostic")
+            if identified_risks:
+                for badge, desc, level in identified_risks:
+                    pill_class = "risk-pill-high" if level == "high" else "risk-pill-medium"
+                    st.markdown(f"""
+                        <div class="stat-card" style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-weight: 600; color: #1e293b;">{desc}</span>
+                            <span class="risk-pill {pill_class}">{badge}</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.success("🌟 All fundamental risk indicators are within safe thresholds.")
+
+        with col_res2:
+            # Credit Tier Card
+            st.markdown(f"""
+                <div class="stat-card" style="text-align: center; border-top: 5px solid {tier_color};">
+                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Credit Health Rating</div>
+                    <div class="tier-badge" style="color: {tier_color};">{credit_tier}</div>
+                    <div style="font-size: 0.95rem; font-weight: 600; color: #334155;">{tier_desc}</div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # Radar Chart
+            radar_fig = create_radar_chart(features)
+            st.plotly_chart(radar_fig, use_container_width=True, height=350)
+
+            # Interactive Celebration
+            if prediction == 0 and distress_prob < 0.15:
+                if st.button("🎉 Validate & Celebrate Solvency!", use_container_width=True):
+                    st.balloons()
+                    st.toast("Corporate health verified: Tier-1 Solvency!", icon="✨")
+
+    # ---------------- TAB 2: ADVANCED ANALYTICS ----------------
+    with tab_adv:
+        st.markdown("### 📊 Interactive Sensitivity & Interaction Heatmap")
+        st.write("Analyze how changing two risk parameters in parallel alters the overall probability of bankruptcy.")
         
-        # Time series simulation
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("📈 Risk Trend Analysis")
-            time_fig = create_time_series_simulation(probability[1])
-            st.plotly_chart(time_fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("🔍 Feature Impact Analysis")
-            importance = selected_model.feature_importances_ if hasattr(selected_model, 'feature_importances_') else [1/6]*6
-            features_names = ['Industrial Risk', 'Management Risk', 'Financial Flexibility',
-                             'Credibility', 'Competitiveness', 'Operating Risk']
-            
-            fig = px.bar(
-                x=importance, 
-                y=features_names, 
-                orientation="h",
-                title="Feature Importance",
-                color=importance,
-                color_continuous_scale='Viridis'
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Distribution analysis
-        st.subheader("📊 Sensitivity Analysis Heatmap")
-        st.write("Understand how changing two variables simultaneously affects the bankruptcy risk.")
+        feature_names = ['Industrial Risk', 'Management Risk', 'Financial Flexibility',
+                         'Credibility', 'Competitiveness', 'Operating Risk']
         
         col_s1, col_s2 = st.columns(2)
         with col_s1:
-            feat1 = st.selectbox("Variable 1:", features_names, index=2)
+            feat1 = st.selectbox("X-Axis Parameter:", feature_names, index=2)
         with col_s2:
-            feat2 = st.selectbox("Variable 2:", features_names, index=1)
+            feat2 = st.selectbox("Y-Axis Parameter:", feature_names, index=1)
             
-        f1_idx = features_names.index(feat1)
-        f2_idx = features_names.index(feat2)
+        f1_idx = feature_names.index(feat1)
+        f2_idx = feature_names.index(feat2)
         
         x_rng, y_rng, z_data = sensitivity_analysis(selected_model, features, f1_idx, f2_idx)
         
@@ -680,224 +672,288 @@ def main():
             x=[f"{x:.1f}" for x in x_rng],
             y=[f"{y:.1f}" for y in y_rng],
             colorscale='RdYlGn_r',
-            hovertemplate=f"{feat1}: %{{x}}<br>{feat2}: %{{y}}<br>Risk: %{{z:.1%}}<extra></extra>"
+            hovertemplate=f"<b>{feat1}</b>: %{{x}}<br><b>{feat2}</b>: %{{y}}<br><b>Risk Probability</b>: %{{z:.1%}}<extra></extra>"
         ))
-        
         fig_heat.update_layout(
-            title=f"Risk Interaction: {feat1} vs {feat2}",
+            title=f"<b>Risk Interaction Landscape: {feat1} vs {feat2}</b>",
             xaxis_title=feat1,
-            yaxis_title=feat2
+            yaxis_title=feat2,
+            height=450
         )
         st.plotly_chart(fig_heat, use_container_width=True)
 
-        st.subheader("📊 Data Distribution")
+        st.markdown("---")
+        col_a1, col_a2 = st.columns(2)
+        with col_a1:
+            st.markdown("#### 📈 Feature Importance Decomposition")
+            if hasattr(selected_model, "feature_importances_"):
+                imp = selected_model.feature_importances_
+            else:
+                imp = np.abs(selected_model.coef_[0]) if hasattr(selected_model, "coef_") else [1/6]*6
+            
+            fig_imp = px.bar(
+                x=imp, y=feature_names, orientation="h",
+                color=imp, color_continuous_scale="Purples",
+                labels={"x": "Relative Weight / Importance", "y": "Feature"},
+                title=f"<b>Feature Importance ({model_choice})</b>"
+            )
+            fig_imp.update_layout(height=350, showlegend=False)
+            st.plotly_chart(fig_imp, use_container_width=True)
 
-    with tab3:
-        st.subheader("🎯 Scenario Analysis")
-        
-        # Run scenario analysis
-        scenarios = scenario_analysis(selected_model, features)
-        
-        # Display results
-        cols = st.columns(3)
-        for i, (scenario, result) in enumerate(scenarios.items()):
-            with cols[i]:
-                color = "success" if result['probability'] < 0.5 else "danger"
-                st.markdown(f"""
-                    <div style='text-align: center; padding: 20px; border-radius: 10px; 
-                         background: {"#d4edda" if color == "success" else "#f8d7da"}'>
-                        <h4>{scenario}</h4>
-                        <h3>{"✅" if result['probability'] < 0.5 else "⚠️"}</h3>
-                        <p>Risk: {result['probability']:.2%}</p>
-                    </div>
-                """, unsafe_allow_html=True)
-        
-        # Monte Carlo simulation
-        st.subheader("🎲 Monte Carlo Risk Simulation")
-        if st.button("🚀 Run Simulation"):
-            with st.spinner("Running 1000 simulations..."):
-                results = []
-                for _ in range(1000):
-                    # Add random noise to features
-                    sim_features = [f + np.random.normal(0, 0.1) for f in features]
-                    sim_features = [max(0, min(1, f)) for f in sim_features]  # Bound between 0-1
-                    _, sim_prob = predict_bankruptcy(selected_model, sim_features)
-                    results.append(sim_prob[1])
-                
-                fig = px.histogram(
-                    x=results, 
-                    nbins=50,
-                    title="Monte Carlo Simulation - Bankruptcy Probability Distribution",
-                    labels={'x': 'Bankruptcy Probability', 'y': 'Frequency'}
-                )
-                fig.add_vline(x=np.mean(results), line_dash="dash", 
-                             annotation_text=f"Mean: {np.mean(results):.2%}")
-                st.plotly_chart(fig, use_container_width=True)
-                
-                st.success(f"📊 Simulation Complete! Average Risk: {np.mean(results):.2%}")
+        with col_a2:
+            st.markdown("#### 📉 Projected Trajectory Simulation (30 Days)")
+            dates = pd.date_range(start=datetime.now(), periods=30, freq='D')
+            np.random.seed(42)
+            sim_probs = np.clip([distress_prob + np.random.normal(0, 0.02) for _ in range(30)], 0, 1)
+            
+            fig_traj = go.Figure()
+            fig_traj.add_trace(go.Scatter(
+                x=dates, y=sim_probs, mode='lines+markers',
+                name='Simulated Probability',
+                line=dict(color="#ef4444" if distress_prob > 0.5 else "#10b981", width=2.5)
+            ))
+            fig_traj.add_hline(y=0.5, line_dash="dash", line_color="#f59e0b", annotation_text="Default Threshold (50%)")
+            fig_traj.update_layout(title="<b>Projected 30-Day Risk Evolution</b>", yaxis_title="Probability", height=350)
+            st.plotly_chart(fig_traj, use_container_width=True)
 
-    with tab4:
-        st.subheader("📈 Model Performance Comparison")
+    # ---------------- TAB 3: STRESS TESTING & MONTE CARLO ----------------
+    with tab_stress:
+        st.markdown("### 🎲 Monte Carlo Risk Simulation")
+        st.write("Quantify probability confidence bounds by simulating thousands of randomized macroeconomic & operational fluctuations.")
         
-        # Model comparison chart
-        comparison_fig = plot_model_comparison(model_scores)
-        st.plotly_chart(comparison_fig, use_container_width=True)
-        
-        # Detailed metrics
-        st.subheader("📋 Detailed Performance Metrics")
-        
-        for model_name, scores in model_scores.items():
-            with st.expander(f"🤖 {model_name} Details"):
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Accuracy", f"{scores['accuracy']:.3f}")
-                with col2:
-                    st.metric("ROC AUC", f"{scores['roc_auc']:.3f}")
-                with col3:
-                    st.metric("CV Score (avg)", f"{np.mean(scores['cv_scores']):.3f}")
-                
-                # Cross-validation scores
-                fig = px.bar(
-                    x=[f"Fold {i+1}" for i in range(len(scores['cv_scores']))],
-                    y=scores['cv_scores'],
-                    title=f"{model_name} Cross-Validation Scores"
-                )
-                st.plotly_chart(fig, use_container_width=True)
+        col_m1, col_m2 = st.columns([1, 3])
+        with col_m1:
+            num_sims = st.slider("Simulation Iterations", 100, 2000, 1000, step=100)
+            volatility = st.slider("Market Volatility (σ)", 0.05, 0.30, 0.12, step=0.01)
+            run_sim = st.button("🚀 Execute Monte Carlo", use_container_width=True)
+            
+        with col_m2:
+            if run_sim or "mc_results" not in st.session_state:
+                np.random.seed(42)
+                mc_res = []
+                for _ in range(num_sims):
+                    perturbed = [max(0.0, min(1.0, f + np.random.normal(0, volatility))) for f in features]
+                    _, p = predict_bankruptcy(selected_model, perturbed)
+                    mc_res.append(p[1])
+                st.session_state.mc_results = mc_res
 
-    with tab5:
-        st.subheader("🔍 Comprehensive Risk Assessment")
-        
-        # Risk categories
-        risk_categories = {
-            "Financial Health": (financial_flexibility, credibility),
-            "Market Position": (competitiveness, industrial_risk),
-            "Operational Efficiency": (operating_risk, management_risk)
+            results = st.session_state.mc_results
+            mean_risk = np.mean(results)
+            var_95 = np.percentile(results, 95)
+            
+            fig_mc = px.histogram(
+                x=results, nbins=40,
+                title=f"<b>Monte Carlo Risk Distribution ({len(results):,} Runs)</b>",
+                labels={"x": "Simulated Bankruptcy Probability", "y": "Frequency"},
+                color_discrete_sequence=["#6366f1"]
+            )
+            fig_mc.add_vline(x=mean_risk, line_dash="solid", line_color="#0f172a", annotation_text=f"Mean: {mean_risk:.1%}")
+            fig_mc.add_vline(x=var_95, line_dash="dash", line_color="#dc2626", annotation_text=f"95% VaR: {var_95:.1%}")
+            fig_mc.update_layout(height=380)
+            st.plotly_chart(fig_mc, use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("#### ⚡ Macroeconomic Shock Stress Test")
+        scenarios = {
+            "Baseline": features,
+            "Mild Industry Downturn (+20% Ind Risk)": [min(1.0, features[0]+0.2), features[1], features[2], features[3], features[4], features[5]],
+            "Liquidity Squeeze (-30% Fin Flexibility)": [features[0], features[1], max(0.0, features[2]-0.3), features[3], features[4], features[5]],
+            "Severe Multi-Shock Crisis": [min(1.0, features[0]+0.3), min(1.0, features[1]+0.2), max(0.0, features[2]-0.4), max(0.0, features[3]-0.3), max(0.0, features[4]-0.3), min(1.0, features[5]+0.3)]
         }
         
-        for category, (metric1, metric2) in risk_categories.items():
-            risk_score = (metric1 + (1-metric2)) / 2 if category == "Financial Health" else (1-metric1 + 1-metric2) / 2
-            
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.write(f"**{category}**")
-                progress_color = "🟢" if risk_score > 0.7 else "🟡" if risk_score > 0.4 else "🔴"
-                st.progress(risk_score)
-            with col2:
-                st.metric("Score", f"{risk_score:.2f}", f"{progress_color}")
-        
-        # Recommendations
-        st.subheader("💡 AI Recommendations")
-        recommendations = []
-        
-        if industrial_risk > 0.6:
-            recommendations.append("🏭 Consider diversifying across industries to reduce sector-specific risks")
-        if management_risk > 0.6:
-            recommendations.append("👥 Strengthen management processes and decision-making frameworks")
-        if financial_flexibility < 0.4:
-            recommendations.append("💰 Improve cash flow management and secure additional financing options")
-        if credibility < 0.5:
-            recommendations.append("🏆 Focus on building market trust through transparent communication")
-        if competitiveness < 0.5:
-            recommendations.append("⚡ Invest in innovation and competitive advantage development")
-        if operating_risk > 0.6:
-            recommendations.append("⚙️ Optimize operational processes and reduce inefficiencies")
-        
-        if not recommendations:
-            recommendations.append("✨ Company shows strong financial health across all metrics!")
-        
-        for rec in recommendations:
-            st.info(rec)
+        sc_cols = st.columns(4)
+        for i, (sc_name, sc_feat) in enumerate(scenarios.items()):
+            _, sc_p = predict_bankruptcy(selected_model, sc_feat)
+            sc_color = "#dc2626" if sc_p[1] > 0.5 else "#059669"
+            with sc_cols[i]:
+                st.markdown(f"""
+                    <div class="stat-card" style="border-left: 4px solid {sc_color};">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #64748b;">{sc_name}</div>
+                        <div style="font-size: 1.5rem; font-weight: 800; color: {sc_color}; margin-top: 6px;">{sc_p[1]:.1%}</div>
+                        <div style="font-size: 0.8rem; color: #475569;">{'🚨 Distress' if sc_p[1] > 0.5 else '✅ Solvency'}</div>
+                    </div>
+                """, unsafe_allow_html=True)
 
-    with tab6:
-        st.subheader("📋 Interactive Data Explorer")
+    # ---------------- TAB 4: BATCH PROCESSING ----------------
+    with tab_batch:
+        st.markdown("### 📂 Bulk Company Risk Scoring")
+        st.write("Upload an Excel or CSV file containing a list of companies to score them in bulk.")
         
-        col1, col2 = st.columns([2, 1])
+        batch_file = st.file_uploader("Upload Company Portfolio File (CSV / XLSX)", type=["csv", "xlsx"], key="batch_uploader")
         
-        with col1:
-            st.subheader("📊 Dataset Overview")
-            st.dataframe(data.head(10))
-            
-            # Interactive scatter plot
-            x_axis = st.selectbox("Select X-axis:", data.columns[:-1])
-            y_axis = st.selectbox("Select Y-axis:", data.columns[:-1])
-            
-            fig = px.scatter(
-                data, 
-                x=x_axis, 
-                y=y_axis, 
-                color='class',
-                title=f"{x_axis} vs {y_axis}",
-                color_discrete_map={0: 'green', 1: 'red'}
+        if batch_file is not None:
+            try:
+                batch_df = pd.read_csv(batch_file) if batch_file.name.endswith(".csv") else pd.read_excel(batch_file)
+                st.write(f"Loaded {len(batch_df)} companies.")
+                
+                req_cols = ['industrial_risk', 'management_risk', 'financial_flexibility', 'credibility', 'competitiveness', 'operating_risk']
+                if all(col in batch_df.columns for col in req_cols):
+                    preds = []
+                    probs = []
+                    tiers = []
+                    for _, row in batch_df[req_cols].iterrows():
+                        p, pr = predict_bankruptcy(selected_model, row.values)
+                        preds.append("Distress" if p == 1 else "Stable")
+                        probs.append(round(pr[1] * 100, 2))
+                        tier, _, _ = get_credit_tier(pr[1])
+                        tiers.append(tier)
+                        
+                    batch_df["Bankruptcy_Risk_Pct"] = probs
+                    batch_df["Prediction"] = preds
+                    batch_df["Credit_Rating"] = tiers
+                    
+                    st.dataframe(batch_df, use_container_width=True)
+                    
+                    csv_export = batch_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="📥 Download Scored Portfolio (CSV)",
+                        data=csv_export,
+                        file_name=f"finshield_portfolio_scores_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.error(f"Missing required columns. Please ensure the file contains: {', '.join(req_cols)}")
+            except Exception as e:
+                st.error(f"Error parsing batch file: {e}")
+        else:
+            st.info("💡 Tip: You can download sample portfolio template below to test batch scoring.")
+            sample_template = pd.DataFrame({
+                "company_name": ["Alpha Corp", "Beta LLC", "Gamma Inc", "Delta Ltd"],
+                "industrial_risk": [0.2, 0.8, 0.5, 0.9],
+                "management_risk": [0.1, 0.7, 0.5, 0.8],
+                "financial_flexibility": [0.9, 0.2, 0.6, 0.1],
+                "credibility": [0.8, 0.3, 0.6, 0.2],
+                "competitiveness": [0.9, 0.2, 0.7, 0.1],
+                "operating_risk": [0.2, 0.8, 0.4, 0.9]
+            })
+            st.dataframe(sample_template, use_container_width=True)
+            st.download_button(
+                "📥 Download Sample Template (CSV)",
+                sample_template.to_csv(index=False).encode('utf-8'),
+                "finshield_sample_template.csv",
+                "text/csv"
             )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("📈 Quick Stats")
-            st.write("**Dataset Info:**")
-            st.write(f"• Total samples: {len(data)}")
-            st.write(f"• Bankruptcy cases: {data['class'].sum()}")
-            st.write(f"• Healthy companies: {len(data) - data['class'].sum()}")
-            st.write(f"• Bankruptcy rate: {data['class'].mean():.1%}")
-            
-            # Correlation heatmap
-            st.subheader("🔥 Feature Correlations")
-            corr_matrix = data.corr()
-            fig = px.imshow(
-                corr_matrix,
-                title="Correlation Heatmap",
-                color_continuous_scale='RdBu'
-            )
-            st.plotly_chart(fig, use_container_width=True)
 
-    # Footer with enhanced styling
-    st.markdown("---")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.info("🔄 **Real-time Updates**: Enable for live predictions")
-    with col2:
-        st.success("🤖 **AI Powered**: Using advanced ML algorithms")
-    with col3:
-        st.warning("⚠️ **Disclaimer**: For educational purposes only")
-    
-    # Enhanced feedback section
-    with st.expander("💬 Feedback & Export"):
-        feedback_tab1, feedback_tab2 = st.tabs(["💭 Feedback", "📤 Export"])
+    # ---------------- TAB 5: ML BENCHMARK ----------------
+    with tab_models:
+        st.markdown("### 📈 Comprehensive Machine Learning Benchmark")
         
-        with feedback_tab1:
-            rating = st.select_slider(
-                "Rate this app:", 
-                options=[1, 2, 3, 4, 5], 
-                format_func=lambda x: "⭐" * x,
-                value=5
+        bench_cols = st.columns(4)
+        for i, (m_name, scores) in enumerate(model_scores.items()):
+            with bench_cols[i]:
+                st.markdown(f"""
+                    <div class="stat-card" style="text-align: center;">
+                        <div style="font-size: 0.9rem; font-weight: 800; color: #312e81;">{m_name}</div>
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #0f172a; margin: 4px 0;">{scores['accuracy']:.1%}</div>
+                        <div style="font-size: 0.8rem; color: #64748b;">Accuracy Score</div>
+                        <hr style="margin: 8px 0; border: none; border-top: 1px solid #e2e8f0;">
+                        <div style="font-size: 0.8rem; color: #475569;">ROC-AUC: <strong>{scores['roc_auc']:.3f}</strong></div>
+                        <div style="font-size: 0.8rem; color: #475569;">F1-Score: <strong>{scores['f1']:.3f}</strong></div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+        st.markdown("---")
+        col_b1, col_b2 = st.columns(2)
+        with col_b1:
+            models_list = list(model_scores.keys())
+            accs = [model_scores[m]['accuracy'] for m in models_list]
+            aucs = [model_scores[m]['roc_auc'] for m in models_list]
+            f1s = [model_scores[m]['f1'] for m in models_list]
+            
+            fig_compare = go.Figure(data=[
+                go.Bar(name='Accuracy', x=models_list, y=accs, marker_color='#6366f1'),
+                go.Bar(name='ROC-AUC', x=models_list, y=aucs, marker_color='#10b981'),
+                go.Bar(name='F1-Score', x=models_list, y=f1s, marker_color='#f59e0b')
+            ])
+            fig_compare.update_layout(barmode='group', title="<b>Model Performance Metric Comparison</b>", height=380)
+            st.plotly_chart(fig_compare, use_container_width=True)
+
+        with col_b2:
+            st.markdown(f"#### 📌 Confusion Matrix: {model_choice}")
+            cm = confusion_matrix(y_test, model_scores[model_choice]['y_pred'])
+            fig_cm = px.imshow(
+                cm, text_auto=True,
+                labels=dict(x="Predicted Class", y="Actual Class", color="Count"),
+                x=['Non-Bankruptcy', 'Bankruptcy'],
+                y=['Non-Bankruptcy', 'Bankruptcy'],
+                color_continuous_scale='Blues'
             )
-            feedback_text = st.text_area("Share your thoughts:")
-            if st.button("Submit Feedback"):
-                st.success("Thank you for your feedback! 🙏")
+            fig_cm.update_layout(title=f"<b>Confusion Matrix ({model_choice})</b>", height=380)
+            st.plotly_chart(fig_cm, use_container_width=True)
+
+    # ---------------- TAB 6: AI ADVISORY ----------------
+    with tab_advisory:
+        st.markdown("### 💡 Executive Financial Advisory & Mitigation Engine")
+        st.write("Automated strategic recommendations tailored to the specific vulnerabilities identified.")
+
+        adv_col1, adv_col2 = st.columns([1, 1])
+        with adv_col1:
+            st.markdown("#### 🎯 Vulnerability Breakdown")
+            cat_health = (financial_flexibility + credibility) / 2
+            cat_market = (competitiveness + (1.0 - industrial_risk)) / 2
+            cat_ops = ((1.0 - operating_risk) + (1.0 - management_risk)) / 2
+
+            st.write(f"**Financial Solvency Buffer**: {cat_health:.1%}")
+            st.progress(cat_health)
+            st.write(f"**Market & Sector Strength**: {cat_market:.1%}")
+            st.progress(cat_market)
+            st.write(f"**Operational Resilience**: {cat_ops:.1%}")
+            st.progress(cat_ops)
+
+        with adv_col2:
+            st.markdown("#### 📋 Recommended Strategic Interventions")
+            recommendations = []
+            if financial_flexibility < 0.4:
+                recommendations.append("💰 **Restructure Debt Portfolio**: Extend short-term debt maturities and secure emergency revolving credit facilities.")
+            if credibility < 0.5:
+                recommendations.append("🏆 **Rebuild Market Transparency**: Implement enhanced quarterly investor disclosures and audited compliance reporting.")
+            if industrial_risk > 0.6:
+                recommendations.append("🏭 **Hedge Sector Concentration**: Diversify customer segments and utilize derivative hedging against sector commodity swings.")
+            if competitiveness < 0.5:
+                recommendations.append("⚡ **Refocus Core Value Proposition**: Divest low-margin business units to reinvest in high-margin core competencies.")
+            if operating_risk > 0.6:
+                recommendations.append("⚙️ **Lean Operational Restructuring**: Audit fixed-cost overheads and implement automation in core supply chains.")
+
+            if not recommendations:
+                st.success("🌟 The enterprise demonstrates resilient financial health. Maintain current fiscal governance and liquidity buffers.")
+            else:
+                for rec in recommendations:
+                    st.info(rec)
+
+    # ---------------- TAB 7: DATA & AUDIT TRAIL ----------------
+    with tab_data:
+        st.markdown("### 📋 Training Dataset & Live User Audit Log")
         
-        with feedback_tab2:
-            if st.button("📊 Export Prediction Report"):
-                report_data = {
-                    'Company_Profile': features,
-                    'Risk_Score': probability[1],
-                    'Prediction': 'Bankruptcy Risk' if prediction == 1 else 'Financially Stable',
-                    'Model_Used': model_choice,
-                    'Timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                }
+        tab_d1, tab_d2 = st.tabs(["📊 Training Dataset Overview", "📝 User Session Audit Trail"])
+        with tab_d1:
+            st.dataframe(data.head(20), use_container_width=True)
+            st.write(f"Total Instances: {len(data)} | Class Distribution: {data['class'].value_counts().to_dict()}")
+            
+            corr = data.corr()
+            fig_corr = px.imshow(corr, title="<b>Feature Correlation Matrix</b>", color_continuous_scale="RdBu_r", text_auto=".2f")
+            st.plotly_chart(fig_corr, use_container_width=True)
+
+        with tab_d2:
+            if st.session_state.history:
+                hist_df = pd.DataFrame(st.session_state.history)
+                st.dataframe(hist_df, use_container_width=True)
                 st.download_button(
-                    label="📥 Download Report (JSON)",
-                    data=str(report_data),
-                    file_name=f"bankruptcy_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json"
+                    "📥 Export Audit Trail (JSON)",
+                    json.dumps(st.session_state.history, indent=2),
+                    f"finshield_audit_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    "application/json"
                 )
+            else:
+                st.info("No audit entries recorded yet in this session.")
 
+    # Footer
+    st.markdown("---")
     st.markdown("""
-        <div style='text-align: center; padding: 20px; color: #666;'>
-            <p>🚀 Made with ❤️ by FinShield | Enhanced AI Bankruptcy Predictor </p>
-            <p style='font-size: 12px;'>Powered by XGBoost, Random Forest & Logistic Regression</p>
+        <div style='text-align: center; color: #64748b; font-size: 0.9rem; padding: 20px;'>
+            🛡️ <strong>FinShield AI Enterprise Edition</strong> | Developed by <strong>Abhinay Patel</strong> (Backend & Architect) & <strong>Sujal Gupta</strong> (Frontend & ML)<br>
+            <span style='font-size: 0.8rem;'>Protected under MIT License | For Enterprise Risk Management and Research</span>
         </div>
     """, unsafe_allow_html=True)
-
 
 if __name__ == "__main__":
     main()

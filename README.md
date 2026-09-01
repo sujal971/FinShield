@@ -1,48 +1,61 @@
-# 🛡️ FinShield AI: Bankruptcy Prediction Engine
+# 🛡️ FinShield AI: Enterprise Corporate Bankruptcy Risk Engine
 
-FinShield is an advanced, machine learning-powered financial risk assessment dashboard designed to predict corporate bankruptcy with high precision. By analyzing key financial indicators, FinShield provides investors, banks, and stakeholders with real-time, data-driven insights into a company's financial health.
+FinShield is an enterprise-grade, machine learning-powered financial risk assessment and corporate distress prediction platform. By evaluating multi-dimensional qualitative and quantitative financial risk indicators, FinShield delivers real-time probability estimates, credit tier ratings (AAA to D), sensitivity heatmaps, and AI-driven mitigation roadmaps for investors, banks, and risk officers.
 
 ## 🚀 Key Features
 
-- **Multi-Model Prediction**: Compare results across **XGBoost**, **Random Forest**, and **Logistic Regression**.
-- **Interactive Risk Profile**: Visual radar charts comparing company risk against industry averages.
-- **Sensitivity Analysis Heatmap**: Understand how the interaction between two different risk factors (e.g., Financial Flexibility vs. Management Risk) impacts overall bankruptcy probability.
-- **Monte Carlo Simulations**: Run 1,000+ simulations to understand the statistical distribution of risk.
-- **Real-time "What-If" Scenarios**: Adjust financial indicators via sliders and see instant updates to risk scores and visualizations.
-- **Premium UI/UX**: Built with a custom glassmorphism design system, Lottie animations, and interactive feedback loops.
+- **🔐 Enterprise Authentication System**: Secure sign-in & registration with multi-role management (Financial Analyst, Risk Director, etc.) and 1-click demo guest access.
+- **🧠 4 Machine Learning Models**: Benchmarking across **XGBoost Classifier**, **Random Forest**, **Decision Tree**, and **Logistic Regression**.
+- **🏆 Credit Health Rating Tiers**: Automated tier scoring from **AAA** (Prime Solvency) down to **D** (Default Risk).
+- **📊 2D Sensitivity Heatmaps**: Multi-variable interaction landscape displaying how simultaneous changes in two risk factors affect bankruptcy probability.
+- **🎲 Monte Carlo Risk Simulations**: Run 100 to 2,000+ stochastic iterations with customizable market volatility to extract Value-at-Risk (95% VaR) and probability distributions.
+- **📂 Batch Portfolio Processing**: Upload CSV/Excel corporate portfolios for bulk distress scoring, table visualization, and export.
+- **💡 Executive Advisory Engine**: Automated strategic mitigation recommendations addressing specific identified vulnerabilities.
+- **📋 Live User Audit Trail**: Historical session activity logging with one-click JSON export.
 
 ## 🏗️ Project Architecture
 
 ```mermaid
 graph TD
-    User((User)) -->|Interacts| UI[Streamlit Frontend]
-    UI -->|Input Features| Engine[Processing Logic]
-    Engine -->|Select Model| Models{ML Models}
-    Models -->|Predict| XGB[XGBoost Classifier]
-    Models -->|Predict| RF[Random Forest]
-    Models -->|Predict| LR[Logistic Regression]
+    User((User / Analyst)) -->|Auth & Session| Login[Authentication & Role Guard]
+    Login -->|Access Granted| UI[Streamlit Glassmorphism UI]
+    
+    UI -->|Feature Sliders / Presets| Engine[Financial Risk Engine]
+    UI -->|Batch Portfolio Upload| Batch[Batch Scoring Pipeline]
+    
+    Engine -->|Active Model Selection| Models{Trained Classifiers}
+    Models -->|Inference| XGB[XGBoost Classifier]
+    Models -->|Inference| RF[Random Forest]
+    Models -->|Inference| DT[Decision Tree]
+    Models -->|Inference| LR[Logistic Regression]
     
     XGB --> Analytics[Advanced Analytics Engine]
     RF --> Analytics
+    DT --> Analytics
     LR --> Analytics
     
-    Analytics -->|Heatmaps/Radar| Plotly[Plotly Visualizations]
-    Analytics -->|Risk Score| UI
-    Plotly --> UI
+    Analytics -->|Credit Tier & Distress Prob| Gauge[Live Risk Gauge & Badge]
+    Analytics -->|Radar / Heatmap / Monte Carlo| Plotly[Plotly Interactive Charts]
+    Analytics -->|Advisory Strategy| Advisor[AI Mitigation Engine]
     
-    subgraph Data Layer
-        Excel[(Excel Dataset)] -.-> Engine
-        Synth[Synthetic Data Generator] -.-> Engine
+    Gauge --> UI
+    Plotly --> UI
+    Advisor --> UI
+    
+    subgraph Data & Storage Layer
+        Excel[(bankruptcy-prevention.xlsx)] --> Engine
+        CSV[(bankruptcy-prevention.csv)] --> Engine
+        History[(Session Audit Trail)] --> UI
     end
 ```
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Streamlit, Custom CSS (Glassmorphism), Lottie Animations
+- **Frontend**: Streamlit, Custom CSS (Glassmorphism), Streamlit-Lottie
 - **Machine Learning**: Scikit-Learn, XGBoost, Joblib
-- **Data Science**: Pandas, NumPy
-- **Visualizations**: Plotly, Matplotlib
-- **Language**: Python 3.10+
+- **Data Science & Analytics**: Pandas, NumPy
+- **Visualizations**: Plotly Express & Graph Objects
+- **Language & Runtime**: Python 3.10+
 
 ## 📥 Installation & Setup
 
@@ -57,10 +70,13 @@ graph TD
    pip install -r requirements.txt
    ```
 
-3. **Run the application**:
+3. **Launch the application**:
    ```bash
    streamlit run App.py
    ```
+
+4. **Access in browser**:
+   Open `http://localhost:8501` to access the dashboard.
 
 ## 👥 Contributors
 
@@ -70,4 +86,4 @@ graph TD
 | **Sujal Gupta** | Frontend Developer & ML Engineer |
 
 ---
-*Developed for professional financial risk assessment and educational purposes.*
+*Developed for professional financial risk management, credit assessment, and educational research.*
