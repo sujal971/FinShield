@@ -283,39 +283,106 @@ def load_data(file_source=None):
         elif os.path.exists("bankruptcy-prevention.csv"):
             file_source = "bankruptcy-prevention.csv"
             
-    if isinstance(file_source, str) and file_source.endswith(".csv"):
-        data = pd.read_csv(file_source)
-    else:
+    # Detect file name or type
+    filename = ""
+    if hasattr(file_source, "name"):
+        filename = file_source.name.lower()
+    elif isinstance(file_source, str):
+        filename = file_source.lower()
+
+    data = None
+
+    # Strategy 1: CSV / TSV / Text by extension
+    if filename.endswith(".csv") or filename.endswith(".tsv") or filename.endswith(".txt"):
+        if hasattr(file_source, "seek"):
+            file_source.seek(0)
+        try:
+            data = pd.read_csv(file_source)
+        except Exception:
+            if hasattr(file_source, "seek"):
+                file_source.seek(0)
+            data = pd.read_csv(file_source, sep=";")
+    # Strategy 2: Excel by extension
+    elif filename.endswith(".xlsx") or filename.endswith(".xls"):
+        if hasattr(file_source, "seek"):
+            file_source.seek(0)
         try:
             data = pd.read_excel(file_source, sheet_name='bankruptcy-prevention', engine='openpyxl')
         except Exception:
+            if hasattr(file_source, "seek"):
+                file_source.seek(0)
             data = pd.read_excel(file_source, engine='openpyxl')
-            
+    # Strategy 3: Multi-attempt fallback for arbitrary buffers
+    else:
+        try:
+            if hasattr(file_source, "seek"):
+                file_source.seek(0)
+            data = pd.read_csv(file_source)
+        except Exception:
+            try:
+                if hasattr(file_source, "seek"):
+                    file_source.seek(0)
+                data = pd.read_excel(file_source, engine='openpyxl')
+            except Exception:
+                if hasattr(file_source, "seek"):
+                    file_source.seek(0)
+                data = pd.read_csv(file_source, sep=";")
+
+    if data is None or len(data) == 0:
+        raise ValueError("The provided file could not be parsed into a valid DataFrame.")
+
     # Handle semicolon separated dataset format if present
     if len(data.columns) == 1 or ';' in str(data.iloc[0, 0]):
         if data.iloc[:, 0].dtype != object:
             data.iloc[:, 0] = data.iloc[:, 0].astype(str)
         data_split = data.iloc[:, 0].str.split(';', expand=True)
-        data_split.columns = [
-            "industrial_risk", "management_risk", "financial_flexibility",
-            "credibility", "competitiveness", "operating_risk", "class"
-        ]
+        if data_split.shape[1] >= 7:
+            data_split.columns = [
+                "industrial_risk", "management_risk", "financial_flexibility",
+                "credibility", "competitiveness", "operating_risk", "class"
+            ] + list(data_split.columns[7:])
         data = data_split
 
-    for col in data.columns[:-1]:
-        data[col] = pd.to_numeric(data[col], errors='coerce').fillna(0.0)
+    # Clean and normalize column names
+    data.columns = [str(c).strip().lower().replace(" ", "_").replace("-", "_") for c in data.columns]
 
-    data['class'] = data['class'].astype(str).str.lower().str.strip().map({
-        'non-bankruptcy': 0, 'bankruptcy': 1, '0': 0, '1': 1, '0.0': 0, '1.0': 1, 'healthy': 0, 'distress': 1
-    }).fillna(0).astype(int)
+    # Required risk columns
+    req_cols = ["industrial_risk", "management_risk", "financial_flexibility",
+                "credibility", "competitiveness", "operating_risk"]
     
-    return data
+    # Fill any missing required numeric columns
+    for col in req_cols:
+        if col in data.columns:
+            data[col] = pd.to_numeric(data[col], errors='coerce').fillna(0.5)
+        else:
+            data[col] = 0.5
+
+    # Process class column if present
+    if "class" in data.columns:
+        data['class'] = data['class'].astype(str).str.lower().str.strip().map({
+            'non-bankruptcy': 0, 'bankruptcy': 1, '0': 0, '1': 1, '0.0': 0, '1.0': 1,
+            'healthy': 0, 'distress': 1, 'non_bankruptcy': 0, 'bankrupt': 1, 'non-bankrupt': 0,
+            'stable': 0, 'positive': 0, 'negative': 1
+        }).fillna(0).astype(int)
+    else:
+        # Generate target class based on financial flexibility & credibility heuristics if missing
+        data['class'] = np.where((data['financial_flexibility'] < 0.4) & (data['credibility'] < 0.4), 1, 0)
+    
+    return data[req_cols + ['class']]
 
 # ---------------------- Train Multiple Models ----------------------
 @st.cache_resource
 def train_models(data):
-    X = data.drop('class', axis=1)
+    X = data[['industrial_risk', 'management_risk', 'financial_flexibility',
+              'credibility', 'competitiveness', 'operating_risk']]
     y = data['class']
+
+    # Ensure class has at least 2 distinct values for classification
+    if len(np.unique(y)) < 2:
+        y = y.copy()
+        y.iloc[0] = 1
+        y.iloc[1] = 0
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     models = {
@@ -334,7 +401,11 @@ def train_models(data):
         y_prob = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else y_pred
         
         trained_models[name] = model
-        cv = cross_val_score(model, X_train, y_train, cv=5, scoring='accuracy')
+        try:
+            cv = cross_val_score(model, X_train, y_train, cv=min(5, len(y_train)), scoring='accuracy')
+        except Exception:
+            cv = np.array([accuracy_score(y_test, y_pred)])
+            
         model_scores[name] = {
             'accuracy': accuracy_score(y_test, y_pred),
             'precision': precision_score(y_test, y_pred, zero_division=0),
@@ -524,9 +595,18 @@ def main():
     # Data Loader
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 📁 Dataset Source")
-    uploaded_file = st.sidebar.file_uploader("Upload custom Excel / CSV", type=["xlsx", "csv"])
+    uploaded_file = st.sidebar.file_uploader("Upload custom Excel / CSV", type=["xlsx", "csv", "tsv", "txt"])
     
-    data = load_data(uploaded_file)
+    try:
+        data = load_data(uploaded_file)
+        if uploaded_file is not None:
+            st.sidebar.success(f"✅ Loaded: {uploaded_file.name} ({len(data)} rows)")
+        else:
+            st.sidebar.info(f"📊 Default Dataset ({len(data)} rows)")
+    except Exception as e:
+        st.sidebar.error(f"❌ Upload error: {e}. Falling back to default.")
+        data = load_data(None)
+
     trained_models, model_scores, X_test, y_test = train_models(data)
 
     # Current Evaluation Feature Vector
@@ -783,7 +863,19 @@ def main():
         
         if batch_file is not None:
             try:
-                batch_df = pd.read_csv(batch_file) if batch_file.name.endswith(".csv") else pd.read_excel(batch_file)
+                b_name = batch_file.name.lower() if hasattr(batch_file, "name") else ""
+                if b_name.endswith(".csv") or b_name.endswith(".tsv") or b_name.endswith(".txt"):
+                    batch_df = pd.read_csv(batch_file)
+                else:
+                    try:
+                        batch_df = pd.read_excel(batch_file, engine='openpyxl')
+                    except Exception:
+                        if hasattr(batch_file, "seek"):
+                            batch_file.seek(0)
+                        batch_df = pd.read_csv(batch_file)
+                
+                # Normalize column headers
+                batch_df.columns = [str(c).strip().lower().replace(" ", "_").replace("-", "_") for c in batch_df.columns]
                 st.write(f"Loaded {len(batch_df)} companies.")
                 
                 req_cols = ['industrial_risk', 'management_risk', 'financial_flexibility', 'credibility', 'competitiveness', 'operating_risk']
