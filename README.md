@@ -4,7 +4,7 @@ FinShield is an enterprise-grade, machine learning-powered financial risk assess
 
 ## 🚀 Key Features
 
-- **🔐 Enterprise Authentication System**: Secure sign-in & registration with multi-role management (Financial Analyst, Risk Director, etc.) and 1-click demo guest access.
+- **⚡ Instant Direct Access**: Direct dashboard launch without login hurdles.
 - **🧠 4 Machine Learning Models**: Benchmarking across **XGBoost Classifier**, **Random Forest**, **Decision Tree**, and **Logistic Regression**.
 - **🏆 Credit Health Rating Tiers**: Automated tier scoring from **AAA** (Prime Solvency) down to **D** (Default Risk).
 - **📊 2D Sensitivity Heatmaps**: Multi-variable interaction landscape displaying how simultaneous changes in two risk factors affect bankruptcy probability.
@@ -17,8 +17,7 @@ FinShield is an enterprise-grade, machine learning-powered financial risk assess
 
 ```mermaid
 graph TD
-    User((User / Analyst)) -->|Auth & Session| Login[Authentication & Role Guard]
-    Login -->|Access Granted| UI[Streamlit Glassmorphism UI]
+    User((User / Analyst)) -->|Direct Interaction| UI[Streamlit Glassmorphism UI]
     
     UI -->|Feature Sliders / Presets| Engine[Financial Risk Engine]
     UI -->|Batch Portfolio Upload| Batch[Batch Scoring Pipeline]

@@ -167,21 +167,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ---------------------- Session State & Authentication System ----------------------
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "username" not in st.session_state:
-    st.session_state.username = "Guest"
-if "user_role" not in st.session_state:
-    st.session_state.user_role = "Financial Analyst"
+# ---------------------- Session State & History ----------------------
 if "history" not in st.session_state:
     st.session_state.history = []
-if "registered_users" not in st.session_state:
-    st.session_state.registered_users = {
-        "admin": {"password": "admin123", "role": "Risk Director", "name": "Director of Risk"},
-        "analyst": {"password": "finshield123", "role": "Senior Financial Analyst", "name": "Sujal Gupta"},
-        "abhinay": {"password": "finshield123", "role": "Chief Architect", "name": "Abhinay Patel"}
-    }
 
 # ---------------------- Helper: Lottie Loader ----------------------
 @st.cache_data
@@ -195,84 +183,6 @@ def load_lottieurl(url: str):
     return None
 
 lottie_financial = load_lottieurl("https://lottie.host/85a2d61b-9e42-4f0e-b016-8656f4d3261a/8pQZkYJmIq.json")
-
-# ---------------------- Authentication View ----------------------
-def render_auth_page():
-    col_l, col_c, col_r = st.columns([1, 2, 1])
-    with col_c:
-        st.markdown("""
-            <div class="auth-container">
-                <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">🛡️</div>
-                <div class="auth-header">FinShield AI</div>
-                <div class="auth-subtitle">Enterprise Corporate Bankruptcy & Credit Risk Assessment Platform</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        auth_tab1, auth_tab2 = st.tabs(["🔐 Secure Sign In", "📝 Create Account"])
-
-        with auth_tab1:
-            with st.form("login_form"):
-                username_input = st.text_input("Username / Email", placeholder="e.g. analyst or admin", key="login_user")
-                password_input = st.text_input("Password", type="password", placeholder="Enter your password", key="login_pass")
-                submit_login = st.form_submit_button("🚀 Sign In to Dashboard", use_container_width=True)
-
-                if submit_login:
-                    if username_input in st.session_state.registered_users and st.session_state.registered_users[username_input]["password"] == password_input:
-                        st.session_state.authenticated = True
-                        st.session_state.username = username_input
-                        st.session_state.user_role = st.session_state.registered_users[username_input]["role"]
-                        st.toast(f"Welcome back, {st.session_state.registered_users[username_input]['name']}!", icon="👋")
-                        st.rerun()
-                    else:
-                        st.error("❌ Invalid credentials. Please check your username and password.")
-
-            st.markdown("---")
-            st.markdown("##### ⚡ Quick Demo Access:")
-            col_d1, col_d2 = st.columns(2)
-            with col_d1:
-                if st.button("👨‍💼 Login as Financial Analyst", use_container_width=True):
-                    st.session_state.authenticated = True
-                    st.session_state.username = "analyst"
-                    st.session_state.user_role = "Senior Financial Analyst"
-                    st.toast("Logged in as Senior Financial Analyst!", icon="🚀")
-                    st.rerun()
-            with col_d2:
-                if st.button("🛡️ Login as Risk Director", use_container_width=True):
-                    st.session_state.authenticated = True
-                    st.session_state.username = "admin"
-                    st.session_state.user_role = "Risk Director"
-                    st.toast("Logged in as Risk Director!", icon="🛡️")
-                    st.rerun()
-
-        with auth_tab2:
-            with st.form("signup_form"):
-                new_username = st.text_input("Choose Username", placeholder="e.g. jdoe")
-                new_name = st.text_input("Full Name", placeholder="e.g. Jane Doe")
-                new_role = st.selectbox("Role / Department", [
-                    "Financial Analyst", "Credit Risk Officer", "Investment Banker", "Portfolio Manager", "Auditor"
-                ])
-                new_password = st.text_input("Create Password", type="password", placeholder="Minimum 6 characters")
-                confirm_password = st.text_input("Confirm Password", type="password")
-                submit_signup = st.form_submit_button("✨ Register New Account", use_container_width=True)
-
-                if submit_signup:
-                    if not new_username or not new_password:
-                        st.error("Please fill in all required fields.")
-                    elif new_username in st.session_state.registered_users:
-                        st.error("Username already exists. Please choose a different one.")
-                    elif new_password != confirm_password:
-                        st.error("Passwords do not match.")
-                    else:
-                        st.session_state.registered_users[new_username] = {
-                            "password": new_password,
-                            "role": new_role,
-                            "name": new_name or new_username
-                        }
-                        st.success("✅ Account successfully created! Please sign in using the 'Secure Sign In' tab.")
-
-if not st.session_state.authenticated:
-    render_auth_page()
-    st.stop()
 
 # ---------------------- Load & Preprocess Data ----------------------
 @st.cache_data
@@ -557,10 +467,10 @@ def sensitivity_analysis(model, features, feat1_idx, feat2_idx):
 
 # ---------------------- Main Application ----------------------
 def main():
-    # Top Navigation & User Header
+    # Top Navigation & Header
     top_c1, top_c2 = st.columns([3, 1])
     with top_c1:
-        st.markdown(f"""
+        st.markdown("""
             <div class="main-header">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <span style="font-size: 2.8rem;">🛡️</span>
@@ -572,17 +482,13 @@ def main():
             </div>
         """, unsafe_allow_html=True)
     with top_c2:
-        st.markdown(f"""
+        st.markdown("""
             <div class="stat-card" style="text-align: center; height: 85%;">
-                <div style="font-size: 0.8rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Active Session</div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-top: 4px;">{st.session_state.username}</div>
-                <div class="user-badge" style="margin: 8px auto 0 auto;">{st.session_state.user_role}</div>
+                <div style="font-size: 0.8rem; color: #64748b; font-weight: 700; text-transform: uppercase;">System Status</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #059669; margin-top: 4px;">🟢 Operational</div>
+                <div class="user-badge" style="margin: 8px auto 0 auto;">4 Models Active</div>
             </div>
         """, unsafe_allow_html=True)
-        if st.button("🚪 Sign Out", use_container_width=True):
-            st.session_state.authenticated = False
-            st.session_state.username = "Guest"
-            st.rerun()
 
     # Sidebar: Controls & Financial Risk Inputs
     st.sidebar.markdown("### 🎛️ AI Control Panel")
@@ -647,7 +553,6 @@ def main():
     # Log to history with native Python serializable types
     log_entry = {
         "timestamp": datetime.now().strftime("%H:%M:%S"),
-        "user": str(st.session_state.username),
         "model": str(model_choice),
         "distress_prob": round(float(distress_prob), 4),
         "prediction": "Bankruptcy Risk" if int(prediction) == 1 else "Stable",
